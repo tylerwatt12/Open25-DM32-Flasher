@@ -1,0 +1,15 @@
+{
+  "name": "open25-dm32-flasher",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "prepare": "python3 tools/prepare.py",
+    "start": "python3 tools/serve.py --port 8326",
+    "test": "node --test v3/tests/*.test.mjs",
+    "verify": "python3 tools/verify_release.py",
+    "prepare:tests": "python3 tools/prepare.py --tests",
+    "package": "python3 tools/package.py"
+  }
+}

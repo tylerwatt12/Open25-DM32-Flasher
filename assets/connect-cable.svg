@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Connect the programming cable</title>
+  <desc id="desc">Animated programming cable connection: radio, then computer USB port.</desc>
+  <style>
+    .radio-plug { transform: translateX(-54px); animation: radio-connect 6s ease-in-out infinite; }
+    .usb-plug { transform: translateX(20px); animation: usb-connect 6s ease-in-out infinite; }
+    .radio-lead { transform-origin: 161px 229px; transform: scaleX(0); animation: radio-slack 6s ease-in-out infinite; }
+    .usb-lead { transform-origin: 479px 221px; animation: usb-slack 6s ease-in-out infinite; }
+    .radio-arrow { animation: radio-cue 6s ease-in-out infinite; }
+    .usb-arrow { animation: usb-cue 6s ease-in-out infinite; }
+    @keyframes radio-connect { 0%, 10%, 100% { transform: translateX(0); } 28%, 88% { transform: translateX(-54px); } }
+    @keyframes usb-connect { 0%, 38%, 100% { transform: translateX(0); } 56%, 88% { transform: translateX(20px); } }
+    @keyframes radio-slack { 0%, 10%, 100% { transform: scaleX(1); } 28%, 88% { transform: scaleX(0); } }
+    @keyframes usb-slack { 0%, 38%, 100% { transform: scaleX(0); } 56%, 88% { transform: scaleX(1); } }
+    @keyframes radio-cue { 0%, 28%, 100% { opacity: 1; } 38%, 88% { opacity: .25; } }
+    @keyframes usb-cue { 0%, 28%, 100% { opacity: .25; } 38%, 88% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .radio-plug, .usb-plug, .radio-lead, .usb-lead, .radio-arrow, .usb-arrow { animation: none; } }
+  </style>
+  <defs><marker id="plug-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="3" markerHeight="3" orient="auto"><path d="M1 1 10 6 1 11" fill="#245b91"/></marker><clipPath id="radio-socket"><rect x="154" y="140" width="100" height="100"/></clipPath></defs>
+  <rect width="760" height="300" rx="12" fill="#f4f7fb"/>
+  <g font-family="system-ui, sans-serif" fill="#182838">
+    <text x="26" y="36" font-size="21" font-weight="700">1. Plug into the radio</text>
+    <text x="418" y="36" font-size="21" font-weight="700">2. Plug USB into the computer</text>
+    <path d="M52 102V68" stroke="#26374b" stroke-width="11" stroke-linecap="round" fill="none"/>
+    <rect x="99" y="86" width="23" height="20" rx="4" fill="#53677c"/>
+    <rect x="31" y="103" width="116" height="157" rx="14" fill="#26374b"/>
+    <rect x="43" y="117" width="91" height="54" rx="4" fill="#c7e5ff"/>
+    <path d="M49 187h79m-79 9h79m-79 9h79" stroke="#8495a8" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <g fill="#53677c"><rect x="48" y="222" width="20" height="12" rx="3"/><rect x="79" y="222" width="20" height="12" rx="3"/><rect x="109" y="222" width="20" height="12" rx="3"/></g>
+    <rect x="145" y="151" width="9" height="55" rx="3" fill="#8da0b6"/>
+    <circle cx="150" cy="165" r="4" fill="#182838"/><circle cx="150" cy="190" r="3" fill="#182838"/>
+    <path d="M161 229c0 25 28 31 50 31h177c25 0 41-14 41-39h50" stroke="#53677c" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path class="radio-lead" d="M161 229h54" stroke="#53677c" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path class="usb-lead" d="M479 221h20" stroke="#53677c" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <g clip-path="url(#radio-socket)"><g class="radio-plug">
+      <path d="M177 165h29m-25 25h25" stroke="#8193a8" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <rect x="202" y="150" width="27" height="56" rx="6" fill="#26374b"/>
+      <path d="M215 207v22" stroke="#53677c" stroke-width="7" stroke-linecap="round" fill="none"/>
+    </g></g>
+    <path class="radio-arrow" d="M219 129h-46" stroke="#245b91" stroke-width="4" stroke-linecap="round" marker-end="url(#plug-arrow)" fill="none"/>
+    <path class="usb-arrow" d="M488 193h49" stroke="#245b91" stroke-width="4" stroke-linecap="round" marker-end="url(#plug-arrow)" fill="none"/>
+    <g class="usb-plug">
+      <rect x="471" y="207" width="35" height="28" rx="5" fill="#26374b"/>
+      <path d="M506 211h25v20h-25" fill="#aebdcb" stroke="#53677c" stroke-width="2"/>
+      <path d="M519 215h7m-7 11h7" stroke="#53677c" stroke-width="3" fill="none"/>
+    </g>
+    <rect x="560" y="76" width="167" height="125" rx="8" fill="#26374b"/>
+    <rect x="570" y="86" width="147" height="104" rx="3" fill="#d9eafa"/>
+    <path d="m560 201-22 36h211l-22-36" fill="#aebdcb" stroke="#53677c" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M574 208h140m-146 8h152m-151 8h152" stroke="#8193a8" stroke-width="3" fill="none"/>
+    <rect x="545" y="217" width="13" height="6" rx="2" fill="#182838"/>
+    <text x="253" y="174" font-size="17" font-weight="650"><tspan x="253">Programming</tspan><tspan x="253" dy="23">cable</tspan></text>
+  </g>
+</svg>

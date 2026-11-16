@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320" viewBox="0 0 240 320">
+  <title>Firmware ZIP</title>
+  <rect width="240" height="320" rx="8" fill="#edf3fa"/>
+  <path d="M35 119V103a9 9 0 0 1 9-9h45l16 16h89a9 9 0 0 1 9 9v113H35Z" fill="#d4e4f4" stroke="#35628c" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M82 72h58l23 24v102H82Z" fill="#fff" stroke="#35628c" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M140 72v24h23M103 125h38M103 139h38" fill="none" stroke="#35628c" stroke-width="3"/>
+  <path d="M29 141h182l-12 91H41Z" fill="#b4cfe9" stroke="#35628c" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="94" y="163" width="52" height="40" rx="4" fill="#fff" stroke="#35628c" stroke-width="3"/>
+  <path d="M105 175h30M105 184h30M105 193h20" fill="none" stroke="#35628c" stroke-width="3"/>
+  <text x="120" y="267" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="500" fill="#35628c">Firmware ZIP</text>
+</svg>

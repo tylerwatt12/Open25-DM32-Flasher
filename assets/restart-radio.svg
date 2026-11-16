@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Turn the radio off, then back on</title>
+  <desc id="desc">Animated volume and power knob sequence: radio OFF, then ON.</desc>
+  <style>
+    .dial-pointer { transform-box: fill-box; transform-origin: center; }
+    .off-pointer { transform: rotate(-65deg); animation: turn-off 6s ease-in-out infinite; }
+    .on-pointer { transform: rotate(35deg); animation: turn-on 6s ease-in-out infinite; }
+    .off-screen { animation: screen-off 6s ease-in-out infinite; }
+    .on-screen { animation: screen-on 6s ease-in-out infinite; }
+    .off-arrow { animation: off-cue 6s ease-in-out infinite; }
+    .on-arrow { animation: on-cue 6s ease-in-out infinite; }
+    @keyframes turn-off { 0%, 8%, 100% { transform: rotate(35deg); } 24%, 88% { transform: rotate(-65deg); } }
+    @keyframes turn-on { 0%, 42%, 100% { transform: rotate(-65deg); } 60%, 88% { transform: rotate(35deg); } }
+    @keyframes screen-off { 0%, 14%, 100% { fill: #c7e5ff; } 24%, 88% { fill: #aab9c7; } }
+    @keyframes screen-on { 0%, 48%, 100% { fill: #aab9c7; } 60%, 88% { fill: #c7e5ff; } }
+    @keyframes off-cue { 0%, 30%, 100% { opacity: 1; } 42%, 88% { opacity: .25; } }
+    @keyframes on-cue { 0%, 30%, 100% { opacity: .25; } 42%, 88% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .dial-pointer, .off-screen, .on-screen, .off-arrow, .on-arrow { animation: none; } }
+  </style>
+  <defs>
+    <marker id="off-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="3" markerHeight="3" orient="auto-start-reverse"><path d="M1 1 10 6 1 11" fill="#a34816"/></marker>
+    <marker id="on-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="3" markerHeight="3" orient="auto-start-reverse"><path d="M1 1 10 6 1 11" fill="#245b91"/></marker>
+    <g id="radio">
+      <path d="M20 98V52" stroke="#26374b" stroke-width="12" stroke-linecap="round" fill="none"/>
+      <rect x="84" y="79" width="29" height="28" rx="5" fill="#53677c" stroke="#26374b" stroke-width="3"/>
+      <path d="M90 83v18m8-18v18m8-18v18" stroke="#aebdcb" stroke-width="2" fill="none"/>
+      <rect x="3" y="103" width="126" height="178" rx="16" fill="#26374b"/>
+      <rect x="16" y="117" width="100" height="60" rx="5" fill="#aab9c7"/>
+      <path d="M22 193h89m-89 8h89m-89 8h89" stroke="#8495a8" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <g fill="#53677c"><rect x="21" y="224" width="23" height="13" rx="3"/><rect x="54" y="224" width="23" height="13" rx="3"/><rect x="87" y="224" width="23" height="13" rx="3"/><rect x="21" y="246" width="23" height="13" rx="3"/><rect x="54" y="246" width="23" height="13" rx="3"/><rect x="87" y="246" width="23" height="13" rx="3"/></g>
+    </g>
+  </defs>
+  <rect width="720" height="320" rx="12" fill="#f4f7fb"/>
+  <path d="M360 24v272" stroke="#d6e0eb" stroke-width="2" fill="none"/>
+  <g font-family="system-ui, sans-serif" fill="#182838">
+    <text x="28" y="36" font-size="22" font-weight="700">1. Turn OFF</text>
+    <text x="388" y="36" font-size="22" font-weight="700">2. Turn ON</text>
+    <use href="#radio" x="43" y="0"/>
+    <use href="#radio" x="403" y="0"/>
+    <rect class="off-screen" x="59" y="117" width="100" height="60" rx="5" fill="#aab9c7"/>
+    <rect class="on-screen" x="419" y="117" width="100" height="60" rx="5" fill="#c7e5ff"/>
+    <path class="off-arrow" d="M174 95a33 33 0 1 0-61 0" stroke="#a34816" stroke-width="5" stroke-linecap="round" marker-end="url(#off-arrow)" fill="none"/>
+    <path class="on-arrow" d="M473 95a33 33 0 1 1 61 0" stroke="#245b91" stroke-width="5" stroke-linecap="round" marker-end="url(#on-arrow)" fill="none"/>
+    <g transform="translate(141.5 81) scale(1 .5)">
+      <circle r="13" fill="#8495a8" stroke="#26374b" stroke-width="2"/>
+      <g class="dial-pointer off-pointer"><circle r="12" fill="none"/><path d="M0-10V-3" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/></g>
+    </g>
+    <g transform="translate(501.5 81) scale(1 .5)">
+      <circle r="13" fill="#8495a8" stroke="#26374b" stroke-width="2"/>
+      <g class="dial-pointer on-pointer"><circle r="12" fill="none"/><path d="M0-10V-3" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/></g>
+    </g>
+    <path d="M184 96h18m342 0h18" stroke="#8193a8" stroke-width="2" fill="none"/>
+    <text x="210" y="89" font-size="17" font-weight="650"><tspan x="210">Volume /</tspan><tspan x="210" dy="22">power knob</tspan></text>
+    <text x="570" y="89" font-size="17" font-weight="650"><tspan x="570">Volume /</tspan><tspan x="570" dy="22">power knob</tspan></text>
+  </g>
+</svg>

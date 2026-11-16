@@ -1,0 +1,10 @@
+{
+  "name": "open25-dm32-flasher-v3",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 ../tools/serve.py --port 8326"
+  }
+}

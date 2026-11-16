@@ -1,0 +1,8 @@
+build/
+node_modules/
+__pycache__/
+.DS_Store
+assets/monitor.bin
+assets/monitor-provenance.json
+releases/**/*.zip
+*.log

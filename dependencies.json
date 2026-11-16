@@ -1,0 +1,13 @@
+{
+  "monitor": {
+    "source": "https://raw.githubusercontent.com/RadioFoundry/RadioFoundry/dfbaf20c400c73e2ccf6edb80af7d1d255bee418/stub/stubtool.py",
+    "source_sha256": "4e3ad1fa0c85d89e9f4bc15c5d6f97212bbab341ac72d958bdf7d0e250124b9e",
+    "path": "assets/monitor.bin",
+    "sha256": "eae5b98615d67ba465061c84a5fb209a902333dc700671ce4ca69a05eb4aaee9"
+  },
+  "test_firmware": {
+    "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r7-application.zip",
+    "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r7-application.zip",
+    "sha256": "e1a5bd5072838e66c49a2fd85af42ad5ade2b846fe7d7593c38900b760124888"
+  }
+}

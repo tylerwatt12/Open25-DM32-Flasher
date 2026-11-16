@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DM32 firmware, backup, recovery and radio information tools.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://storage.ko-fi.com; style-src 'self' 'unsafe-inline' https://storage.ko-fi.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://ko-fi.com; img-src 'self' data: https://storage.ko-fi.com; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Flasher v3 · Open25-DM32</title>
+  <link rel="icon" href="../assets/radio.svg?v=1" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=18">
+  <script type="module" src="app.mjs"></script>
+  <script defer src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+  <script defer src="lib/support.mjs"></script>
+</head>
+<body class="firmware-utility">
+  <main class="utility">
+    <header class="utility-header">
+      <a class="brand" href="firmware.html"><img src="../assets/radio.svg?v=1" width="24" height="24" alt=""><span>Open25-DM32<small>Flasher v3</small></span></a>
+      <div class="header-actions"><button id="all-tools" class="text-button tools-menu" type="button" aria-label="All tools" title="All tools" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="20" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><circle cx="4" cy="20" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="20" cy="20" r="2"/></svg></button><span id="connection-label">Not connected</span><button id="disconnect" class="text-button" type="button" hidden>Disconnect</button></div>
+    </header>
+    <div class="utility-options">
+      <div id="hardware-report-option" class="diagnostics-choice" role="group" aria-label="Diagnostic sharing" hidden><label class="check"><input id="hardware-reporting" type="checkbox" checked><span>Share diagnostics to help improve Open25</span></label><button id="diagnostics-details" type="button" class="text-button" aria-haspopup="dialog" aria-controls="diagnostics-dialog">Details</button></div>
+    </div>
+    <section class="utility-body" aria-label="Radio utility">
+      <div id="work-card" class="work-card" aria-label="Selected radio tool">
+        <div class="work-main">
+          <p id="current-stage" class="eyebrow" role="status" aria-live="polite" hidden></p>
+          <div id="screen"></div>
+          <div id="progress-area" class="progress-area" hidden><img id="restart-illustration" class="restart-illustration" src="../assets/restart-radio.svg" width="720" height="320" alt="Animated volume and power knob sequence: radio OFF, then ON." hidden><div class="progress-label"><span id="progress-caption"></span><span id="progress-number"></span></div><progress id="progress" max="100" value="0" aria-label="Current stage progress"></progress><p id="progress-help" role="status" aria-live="polite">Keep the radio connected.</p><div class="actions"><button id="cancel-read" type="button" class="button" hidden>Cancel</button><button id="skip-verification" type="button" class="text-button" hidden>Skip final check…</button></div></div>
+          <div id="error" class="error" role="alert" hidden>
+            <p id="error-message"></p>
+            <div id="error-support" class="error-support" hidden>
+              <div class="support-reference"><span>Support ID:</span><code id="error-support-id"></code><button id="copy-support-id" class="text-button" type="button" aria-label="Copy support ID">Copy</button></div>
+              <p id="error-support-help">Include this ID when reporting the problem.</p>
+            </div>
+          </div>
+        </div>
+        <aside id="file-summary" class="file-summary" aria-label="Selected files" hidden></aside>
+        <section id="chip-activity" class="chip-activity" aria-label="Chip activity" hidden><div id="chip-activity-grid" class="chip-grid"></div></section>
+      </div>
+
+    </section>
+    <details class="details"><summary>Technical details</summary><div class="detail-tools"><button id="export-receipt" class="text-button" type="button">Download report</button></div><section><h3>Current operation</h3><p id="journal-status">None.</p></section><section><h3>Activity</h3><pre id="activity" aria-label="Activity log"></pre></section></details>
+  </main>
+  <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-title" aria-describedby="diagnostics-description">
+    <h2 id="diagnostics-title">Diagnostic information</h2>
+    <div id="diagnostics-description">
+      <p>With sharing enabled, kd8zmm.com receives:</p>
+      <ul>
+        <li>Your IP address, browser user agent, visit time and temporary page and operation IDs.</li>
+        <li>USB adapter IDs and connection statistics; radio chip IDs, memory sizes, boot-code fingerprint and recognition result.</li>
+        <li>Firmware version and hash, flasher version, chosen action, stages, results, error messages, codec headers and fingerprints and verification method.</li>
+      </ul>
+      <p>Backups, filenames, radio programming, keys, calibration, raw radio data and Radio info reports are not shared. Local previews don’t send diagnostics.</p>
+      <p>Uncheck sharing at any time. Temporary IDs reset on each visit.</p>
+    </div>
+    <div class="actions"><button id="diagnostics-close" type="button" class="button" autofocus>Close</button></div>
+  </dialog>
+  <dialog id="usage-dialog" aria-labelledby="usage-title">
+    <h2 id="usage-title" tabindex="-1" autofocus>Important: Regulatory Compliance &amp; Intended Use</h2>
+    <div id="usage-description">
+      <p><strong>Open25-DM32 is experimental firmware intended for amateur radio use only.</strong></p>
+      <p>Transmitting with this firmware is intended exclusively for licensed amateur radio operators operating in accordance with FCC Part 97 regulations, within their authorized frequency allocations and operating privileges.</p>
+      <p><strong>FCC Certification:</strong> Although the original DM-32UV hardware carries FCC Part 90 certification for certain analog FM and DMR emissions, that certification does not include P25 emissions introduced by this firmware. Open25-DM32 has not been independently tested or certified for Part 90 P25 operation.</p>
+      <p><strong>Prohibited and Unsupported Uses:</strong></p>
+      <ul>
+        <li><strong>Public Safety:</strong> Not intended or approved for transmitting on police, fire, EMS, government, or other Part 90 land-mobile radio systems.</li>
+        <li><strong>Mission-Critical Communications:</strong> Do not use this firmware for life-safety, emergency response, dispatch, or any application where communication failure could result in injury, loss of life, or property damage.</li>
+        <li><strong>Commercial Operations:</strong> Not intended for commercial, business, or other non-amateur radio communications.</li>
+        <li><strong>Unauthorized System Access:</strong> Do not attempt to register, affiliate, or transmit on any radio system without appropriate legal authorization.</li>
+      </ul>
+      <p><strong>Experimental Software Disclaimer:</strong> This firmware is provided "AS IS," without warranty of any kind. It is under active development and may contain bugs, incomplete features, or unexpected behavior, including unintended RF transmissions or communication failures.</p>
+      <p>Users are solely responsible for ensuring their operation complies with all applicable laws, regulations, licensing requirements, and frequency restrictions.</p>
+      <p><strong>This firmware is not a substitute for certified, professionally supported communications equipment.</strong></p>
+    </div>
+    <div class="actions"><button id="usage-dismiss" type="button" class="button">I understand</button></div>
+  </dialog>
+  <dialog id="compatibility-dialog" aria-labelledby="compatibility-title">
+    <h2 id="compatibility-title">Before you flash</h2>
+    <h3>Browser</h3>
+    <ul class="compatibility-grid">
+      <li class="compatibility-choice"><img src="assets/browser-chrome.svg" width="36" height="36" alt=""><strong>Chrome</strong><span class="compatibility-good" role="img" aria-label="Supported">✓</span></li>
+      <li class="compatibility-choice"><img src="assets/browser-edge.png" width="36" height="36" alt=""><strong>Edge</strong><span class="compatibility-good" role="img" aria-label="Supported">✓</span></li>
+      <li class="compatibility-choice"><img src="assets/browser-firefox.png" width="36" height="36" alt=""><strong>Firefox</strong><span class="compatibility-bad" role="img" aria-label="Not supported">✕</span></li>
+      <li class="compatibility-choice"><img src="assets/browser-safari.png" width="36" height="36" alt=""><strong>Safari</strong><span class="compatibility-bad" role="img" aria-label="Not supported">✕</span></li>
+    </ul>
+    <h3>USB programming cable</h3>
+    <ul class="compatibility-grid compatibility-cables">
+      <li class="compatibility-choice"><strong>CH340</strong><span class="compatibility-good" role="img" aria-label="Recommended">✓</span></li>
+      <li class="compatibility-choice"><strong>Prolific</strong><span id="prolific-support" class="compatibility-warning" role="img" aria-label="Driver-dependent">△</span></li>
+    </ul>
+    <p id="cable-driver-note">Prolific compatibility depends on its driver.</p>
+    <p id="cable-platform-help">Check your cable’s USB manufacturer in system settings.</p>
+    <img id="cable-windows-example" class="usb-device-example" src="assets/device-manager-ch340.png" width="756" height="378" alt="Device Manager showing USB-SERIAL CH340 under Ports (COM &amp; LPT)." hidden>
+    <div id="cable-mac-example" class="usb-device-example usb-details-example" role="group" aria-labelledby="mac-usb-example-title" hidden><div id="mac-usb-example-title" class="usb-example-title">USB details · example</div><pre>USB-Serial Controller
+Manufacturer: Prolific Technology Inc.
+Vendor ID:    0x067b
+Product ID:   0x2303</pre></div>
+    <div class="actions"><button id="compatibility-dismiss" type="button" class="button" autofocus>Continue</button></div>
+  </dialog>
+</body>
+</html>
