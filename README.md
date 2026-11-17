@@ -3,7 +3,7 @@
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
 The coordinated Classic r10 release uses flasher version
-`2026-11-16-flasher-v3-4`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
+`2026-11-16-flasher-v3-5`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
 catalog and shared-asset hashes. The flasher protocol and flash write scopes
 are unchanged.
 
@@ -13,7 +13,9 @@ choices are removed from the homepage; their former public entry URLs redirect
 to [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html).
 
 The tools provide First install, Update firmware, Backup / Restore, Revert to
-factory, Radio info and Create update file. Use desktop Chrome or Edge for Web
+factory, Radio info and offline installer. Update firmware accepts a radio
+already running RadioFoundry or Open25, with the existing prepared-codec check.
+Use desktop Chrome or Edge for Web
 Serial. Choose the intended operation before connecting; writing requires its
 own explicit action. A full backup and a CPS codeplug are different files.
 Preserve a full backup belonging to the same radio before changing firmware.

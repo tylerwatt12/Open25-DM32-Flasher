@@ -259,7 +259,7 @@ test('only the power-on timeout adds bounded connection context to the existing 
       serialNumber: 'private-cable-id', rawBytes: 'private radio data' } });
   await ui.mode('info'); await ui.click('connect');
   const event = ui.calls.diagnostics.find(event => event.workflow === 'connect' && event.event === 'operation_failed');
-  assert.equal(event.appVersion, '2026-11-16-flasher-v3-4');
+  assert.equal(event.appVersion, '2026-11-16-flasher-v3-5');
   assert.equal(event.error.code, 'rom_no_handshake');
   assert.match(event.error.message, /USB 067b:2303 RX=9999999 TX=9999999 W=9999999:9999999 E=9999999:BufferOverrunError maxW=9999999ms/);
   assert.match(event.error.message, /Restart radio and retry\.$/);
@@ -395,7 +395,7 @@ test('hosted direct-write outcomes identify checksum verification without claimi
   const event = ui.calls.diagnostics.find(event => event.workflow === 'update' && event.event === 'operation_succeeded');
   assert(event); assert.equal(event.verificationMethod, 'sector-crc32');
   assert.equal(event.readbackVerified, false); assert.equal(event.verificationSkipped, false);
-  assert.equal(event.appVersion, '2026-11-16-flasher-v3-4');
+  assert.equal(event.appVersion, '2026-11-16-flasher-v3-5');
 });
 
 test('write failure diagnostics preserve received support ID and sanitize private file details', async t => {
@@ -407,7 +407,7 @@ test('write failure diagnostics preserve received support ID and sanitize privat
   assert.doesNotMatch(event.error.message, /owner-radio|private\.example|0123456789abcdef/);
   await ui.elementClick('copy-support-id');
   assert(ui.calls.copied[0].includes(event.operationId));
-  assert(ui.calls.copied[0].includes('flasher-v3-4'));
+  assert(ui.calls.copied[0].includes('flasher-v3-5'));
 });
 
 test('restart failure preserves completed checksum result and reports manual power cycle', async t => {

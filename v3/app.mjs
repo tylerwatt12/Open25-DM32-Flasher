@@ -27,7 +27,7 @@ const randomId = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 const pageId = randomId();
-const APP_VERSION = '2026-11-16-flasher-v3-4';
+const APP_VERSION = '2026-11-16-flasher-v3-5';
 // Bump this key if the regulatory notice changes and needs fresh acceptance.
 const usageAcceptanceKey = 'open25-dm32-v3-regulatory-v1';
 let diagnosticHardware, diagnosticAttempt;
@@ -134,7 +134,7 @@ let chipPanels, chipPanelKey = '', chipStopped = false;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const button = (action, label, disabled = false) => `<button type="button" class="button" data-action="${action}" ${disabled ? 'disabled' : ''}>${label}</button>`;
 const link = (action, label) => `<button type="button" class="text-button" data-action="${action}">${label}</button>`;
-const names = { first: 'First install', update: 'Update firmware', archive: 'Backup / Restore', factory: 'Revert to factory', info: 'Radio info', package: 'Create update file' };
+const names = { first: 'First install', update: 'Update firmware', archive: 'Backup / Restore', factory: 'Revert to factory', info: 'Radio info', package: 'offline installer' };
 const baofengFirmwareURL = 'https://baofeng.s3.amazonaws.com/Baofeng_DM-32UV_Firmware_v1.01.048.zip';
 const baofengCpsURL = 'https://baofeng.s3.amazonaws.com/BAOFENG_DM-32UV_CPS_v1.60_20260608.zip';
 const workflow = () => mode === 'first' ? 'first_install' : mode === 'factory' ? 'revert' : mode === 'archive' ? archiveAction : mode;
@@ -301,11 +301,11 @@ function renderChipActivity(p) {
 function home() {
   const choices = [
     ['first', 'First install', 'For a radio running Baofeng firmware.'],
-    ['update', 'Update firmware', 'For a radio already running Open25.'],
+    ['update', 'Update firmware', 'For a radio already running RadioFoundry or Open25.'],
     ['archive', 'Backup / Restore', 'Save or restore everything on this radio.'],
     ['factory', 'Revert to factory', 'Reinstall original Baofeng firmware.'],
     ['info', 'Radio info', 'View hardware, codec and memory details.'],
-    ['package', 'Create update file', 'For Baofeng’s firmware updater.'],
+    ['package', 'offline installer', "create an offline firmware package for Baofeng's updater"],
   ];
   return `<h2>What would you like to do?</h2><div class="v3-tools">${choices.map(([id, name, description]) => `<button type="button" class="v3-tool" data-action="mode-${id}"><strong>${name}</strong><span>${description}</span>${id === 'package' ? '<small class="tool-tag">Windows only</small>' : ''}</button>`).join('')}</div>`;
 }
@@ -352,7 +352,7 @@ function render() {
     ? `<h2>Update file created</h2><p class="file-meta">Voice codec from ${escape(stockSelection.filename)}</p><div class="actions">${button('package-download', 'Download update .bin')}</div>${baofengGuide()}`
     : `<h2>Choose Baofeng firmware</h2><p class="description">Unzip the Baofeng download, then choose its .bin file for the voice codec. The file stays on your computer.</p><div class="actions"><a class="button secondary" href="${baofengFirmwareURL}" target="_blank" rel="noopener noreferrer">Download Baofeng firmware <span aria-hidden="true">↗</span></a>${button('package-oem', 'Choose OEM file…')}</div>`;
   else if (mode === 'archive' && !archiveAction) html = `<h2>Backup / Restore</h2><p class="description">Save a complete copy of this radio, or restore one you saved earlier.</p><div class="actions">${button('choose-backup', 'Back up this radio')}${button('choose-restore', 'Restore a backup')}</div>`;
-  else if (mode === 'factory' && !factorySelection) html = `<h2>Choose Baofeng firmware</h2><p class="description">Use original Baofeng firmware for this radio. This cannot recover erased settings or calibration.</p><div class="actions"><a class="button secondary" href="${baofengFirmwareURL}" target="_blank" rel="noopener noreferrer">Download Baofeng firmware <span aria-hidden="true">↗</span></a>${button('factory-file', 'Choose Baofeng file…')}</div>`;
+  else if (mode === 'factory' && !factorySelection) html = `<h2>Choose Baofeng firmware</h2><p class="description">Restore original Baofeng firmware for this radio. Download a zip, and provide a .bin firmware file below</p><div class="actions"><a class="button secondary" href="${baofengFirmwareURL}" target="_blank" rel="noopener noreferrer">Download Baofeng firmware <span aria-hidden="true">↗</span></a>${button('factory-file', 'Choose Baofeng file…')}</div>`;
   else if (workflow() === 'restore' && !restoreArchive) html = `<h2>Choose a backup</h2><p class="description">Use a full backup made from this radio. Restoring it replaces firmware, settings and factory calibration.</p><div class="actions">${button('restore-file', 'Choose backup ZIP…')}</div>`;
   else if (!state.connected) html = connectScreen();
   else if (isFirmware()) html = `<h2>${mode === 'first' ? 'Ready to install' : 'Ready to update'}</h2><p class="description">Install the selected firmware. A full backup is optional.</p>${firmwareSelection?.manifest.target === 'dm32-operator' ? '<p class="change-note">Next may replace stored radio programming when it starts.</p>' : firmwareSource === 'classic' ? '<p class="change-note">This release uses the new Classic CPS. Retired Classic formats are not imported; existing RFKV programming is preserved.</p>' : ''}<div class="actions">${button('flash', mode === 'first' ? 'Install firmware' : 'Update firmware')}</div>`;
