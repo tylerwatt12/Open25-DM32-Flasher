@@ -288,7 +288,7 @@ test('first install uses the existing ZIP and waits for an explicit write withou
   await ui.click('connect');
   assert.match(ui.html(), /Ready to install/);
   assert.match(ui.html(), /This release uses the new Classic CPS/);
-  assert.match(ui.html(), /Older Classic programming is not imported/);
+  assert.match(ui.html(), /Retired Classic formats are not imported; existing RFKV programming is preserved/);
   assert.doesNotMatch(ui.html(), /Save a full backup|Skip backup/);
   assert.equal(ui.calls.writes, 0); assert.equal(ui.calls.saves, 0);
   await ui.click('flash');

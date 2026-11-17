@@ -1,5 +1,5 @@
 {
-  "captured_utc": "2026-11-17T01:17:41.967989+00:00",
+  "captured_utc": "2026-11-17T01:34:39.476188+00:00",
   "url": "https://kd8zmm.com/open25-dm32/v3/firmware.html",
   "version": "2026-11-16-flasher-v3-4",
   "files_sha256": {
@@ -12,7 +12,7 @@
     "assets/restart-radio.svg": "c458afdb4c9a7d8504128d66539adf2de33fe82c61a45f9293825f905f70e1ec",
     "releases/catalog.json": "1569359b862ccf9c5e70537577fe21aa98fba86312c95bf6a9973247e70ecdf3",
     "v3/THIRD_PARTY.md": "f9aee37ae54bafecad6f6dd5851f65d336b1ced5aca42ce58636bc3be8bc56dd",
-    "v3/app.mjs": "1f98bc729b502494a4c69c26e60d7948966e974ef732c66d2cd34c7f66a81594",
+    "v3/app.mjs": "2482a2c87115c946a41e37edf51b840aff9f457e3e70b61d061f6166c6d00aa3",
     "v3/assets/baofeng-com-settings.png": "1582ee329b5bbf5c4b17cdb644e47e680b9b35b12a376b394a527348a38e1a41",
     "v3/assets/baofeng-communication-failed.png": "3ac777b6223a0a7d352d10280d64931466fa7ac1edda71db524b4a9d7529fc77",
     "v3/assets/baofeng-cps-icon.png": "e7bb3d5b34727c63facd25bea7042ba86484eaa75b011460ab2ae5553a0216ff",
