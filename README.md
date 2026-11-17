@@ -2,7 +2,7 @@
 
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
-The Classic r12 catalog uses the existing flasher version
+The Classic r13 catalog uses the existing flasher version
 `2026-11-17-flasher-v3-6`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
 catalog and shared-asset hashes. The flasher protocol and flash write scopes
 are unchanged.
@@ -37,7 +37,7 @@ The generated `assets/monitor.bin` is ignored and is never a Git input.
 The helper's device-side source is absent from the pinned upstream tree; this
 is a pinned binary dependency, not a source-reproducible helper build.
 
-The reviewed release catalog is checked in as metadata. Only Classic r12 is
+The reviewed release catalog is checked in as metadata. Only Classic r13 is
 selectable for Classic; earlier Classic releases are removed from the catalog.
 Firmware ZIPs are
 not included. For local catalog installs, obtain a chosen public ZIP from
@@ -139,10 +139,25 @@ unlock or a prompt on every PTT press.
 Classic r11 advertises saved conventional P25 support in the firmware VERSION
 response, restoring the P25 mode choice in Classic CPS after connecting. It
 preserves existing RFKV programming and the r10 RX-only defaults. The catalog
-retains the r11 fix in r12; previously hosted package URLs remain available.
+retains the r11 fix in r13; previously hosted package URLs remain available.
 
 ## Classic r12 speaker playback fix
 
-The catalog offers r12 with independent 2 ms speaker FIFO servicing. The
-existing codec and gain are preserved. This update changes release metadata
-only; Flasher v3 and both CPS applications are unchanged.
+Classic r12 introduced independent 2 ms speaker FIFO servicing. The existing
+codec and gain are preserved in r13.
+
+## Classic r13 P25 transmit and cleanup fixes
+
+The catalog offers r13 with two Classic P25 fixes: separate the native P25
+guard from the upstream PCM refill timer, and finish hardware ownership release
+when radio-task cleanup takes longer than 500 ms. The existing speaker playback
+fix, codec/gain, RFKV programming and supported modes are preserved.
+
+Software regression, target stack/ABI and reproducible-build checks pass. A test
+build containing these fixes passed installation/startup and saved-channel
+checks. Manual on-air PTT/audio qualification remains pending; the DMR-only
+endurance report is not established as resolved. PL/CTCSS can still drop during
+DTMF.
+
+This update changes release metadata only. Flasher v3 runtime and both CPS
+applications are unchanged; old hosted package URLs remain available.

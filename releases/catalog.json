@@ -13,10 +13,10 @@
           "name": "Standard \u00b7 DM-32UV",
           "releases": [
             {
-              "version": "0.1.0-rc1-r12",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r12-audio-fifo-application.zip",
-              "sha256": "b5c923496e7db923eaa482ab6d357b3ee9da28a6367847c6a09fc22222eec785",
-              "notes": "Classic r12 services the speaker FIFO from a 2 ms hardware timer so block callbacks cannot delay playback. It reuses the previous scratch memory for an extra queued block and retains a frame when space opens during its callback. P25 gain and the existing MIT IMBE codec are unchanged; this public line remains FM, DMR and conventional P25. Existing RFKV programming, RX-only defaults, transmit checks and codec slot are preserved. Full host and sanitizer tests, target stack/ABI checks, zero-warning builds and a byte-identical forced rebuild passed. Physical-radio qualification of r12 has not been performed. Known issues: PL/CTCSS can drop during DTMF, and intermittent P25 PTT startup with no RF remains under investigation."
+              "version": "0.1.0-rc1-r13",
+              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip",
+              "sha256": "62298c88923ffd621aa590e409e619ca3beaf94432a468668ff9aa44553974d0",
+              "notes": "Classic r13 fixes the r12 P25 transmit-startup timer collision and completes P25 RX/TX hardware ownership release after delayed cleanup. It retains the r12 speaker FIFO fix and the existing MIT IMBE codec and gain. This public line remains FM, DMR and conventional P25. Existing RFKV programming, RX-only defaults, transmit checks and reserved codec slot are preserved. Full host and sanitizer tests, target stack/ABI checks, zero-warning builds and a byte-identical forced rebuild passed. The matching fix candidate passed installation/startup and saved-channel checks; manual on-air PTT/audio qualification remains pending. A DMR-only endurance lockout has not been reproduced. Known issue: PL/CTCSS can drop during DTMF."
             }
           ]
         }
