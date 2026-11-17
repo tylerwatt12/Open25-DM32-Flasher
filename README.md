@@ -98,7 +98,8 @@ other third-party artwork retain their stated ownership and are not relicensed
 under GPL. The deployed provenance file is preserved verbatim; historical
 parent-tool references now refer to this standalone repository.
 
-The intended public repository name is `Open25-DM32-Flasher`. This is a local
-source-release preparation. No GitHub repository or release has been created,
-and no site deployment is performed by this repository's commands. GitHub is
-source-only; firmware packages continue to be hosted on kd8zmm.com.
+Source code is published in
+[Open25-DM32-Flasher](https://github.com/tylerwatt12/Open25-DM32-Flasher).
+Source publication and this repository's commands do not deploy or change the
+live site. GitHub is source-only; firmware packages continue to be hosted on
+kd8zmm.com.
