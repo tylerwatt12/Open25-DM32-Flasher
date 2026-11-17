@@ -6,8 +6,8 @@
     "sha256": "eae5b98615d67ba465061c84a5fb209a902333dc700671ce4ca69a05eb4aaee9"
   },
   "test_firmware": {
-    "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r11-p25-capability-application.zip",
-    "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r11-p25-capability-application.zip",
-    "sha256": "3b2b6d42d3e84d9712763f9501395f39ea30a331fd1a8011b48f88fce88ec94f"
+    "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r12-audio-fifo-application.zip",
+    "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r12-audio-fifo-application.zip",
+    "sha256": "b5c923496e7db923eaa482ab6d357b3ee9da28a6367847c6a09fc22222eec785"
   }
 }
