@@ -10,8 +10,8 @@ import { jsonBytes, zip } from '../lib/zip.mjs';
 import { syntheticCodec } from './codec-fixture.mjs';
 
 const catalog = JSON.parse(await readFile(new URL('../../releases/catalog.json', import.meta.url)));
-const release = catalog.channels.find(channel => channel.id === 'classic').variants[0].releases.find(item => item.version === '0.1.0-rc1-r7');
-assert(release, 'The public Classic r7 fixture must remain available.');
+const release = catalog.channels.find(channel => channel.id === 'classic').variants[0].releases[0];
+assert(release, 'The current Classic release is required for package tests.');
 const publicZip = new Uint8Array(await readFile(new URL('../../releases/' + release.file, import.meta.url)));
 assert.equal(await sha256(publicZip), release.sha256);
 
@@ -53,7 +53,7 @@ function assertCandidate(result, selected, expectedSlot) {
   assert.deepEqual(result.firmware, selected.manifest);
 }
 
-test('actual public Classic r7 exports exact application, codec and deterministic padding without changing either input', async () => {
+test('current catalog Classic release exports exact application, codec and deterministic padding without changing either input', async () => {
   const oem = syntheticOem(), oemHash = await sha256(oem), zipHash = await sha256(publicZip);
   const selected = await readFirmware(publicZip), result = await buildFactoryUpdate(publicZip, oem);
   assertCandidate(result, selected, syntheticCodec());

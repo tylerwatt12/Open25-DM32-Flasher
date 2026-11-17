@@ -20,7 +20,7 @@ def save(record,data):
     target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tests',action='store_true',help='Also retrieve the public Classic r7 test package')
+    parser.add_argument('--tests',action='store_true',help='Also retrieve the current catalog Classic test package')
     args=parser.parse_args();monitor=LOCK['monitor']
     if (ROOT/monitor['path']).exists():checked((ROOT/monitor['path']).read_bytes(),monitor['sha256'])
     else:

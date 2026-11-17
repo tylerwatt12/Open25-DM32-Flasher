@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Check the initial snapshot and any prepared external dependencies."""
+"""Check the reviewed release snapshot and prepared external dependencies."""
 from pathlib import Path
 import hashlib,json
 ROOT=Path(__file__).resolve().parents[1]

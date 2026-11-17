@@ -317,11 +317,11 @@ test('BrowserSerial uses 115200 for a real Monitor direct flash with no readback
 });
 
 const catalog = JSON.parse(await readFile(new URL('../../releases/catalog.json', import.meta.url), 'utf8'));
-const publicR7 = catalog.channels.find(channel => channel.id === 'classic').variants
-  .flatMap(variant => variant.releases).find(release => release.version === '0.1.0-rc1-r7');
-assert(publicR7, 'The actual public Classic r7 package is required for owner-boundary tests.');
-const publicR7Zip = new Uint8Array(await readFile(new URL(`../../releases/${publicR7.file}`, import.meta.url)));
-assert.equal(await sha256(publicR7Zip), publicR7.sha256, 'Public r7 ZIP must match its catalog SHA256.');
+const publicClassic = catalog.channels.find(channel => channel.id === 'classic').variants
+  .flatMap(variant => variant.releases)[0];
+assert(publicClassic, 'The current catalog Classic package is required for owner-boundary tests.');
+const publicClassicZip = new Uint8Array(await readFile(new URL(`../../releases/${publicClassic.file}`, import.meta.url)));
+assert.equal(await sha256(publicClassicZip), publicClassic.sha256, 'Current Classic ZIP must match its catalog SHA256.');
 
 async function ownerSetup(t) {
   const { clock, wire, monitor } = await setup(t);
@@ -342,11 +342,11 @@ function factoryFile(payload) {
   bytes.set(payload, 0x100); return bytes;
 }
 
-test('actual Installer and Monitor update the catalog-verified public r7 package with program-only CRC proof', async t => {
+test('actual Installer and Monitor update the catalog-verified current Classic package with program-only CRC proof', async t => {
   const { clock, wire, monitor, journal, engine } = await ownerSetup(t);
   const boot = wire.images.program.slice(0, APP_START), codec = wire.images.program.slice(DM32_CODEC.start), data = wire.images.data.slice();
-  const { application, manifest } = await readFirmware(publicR7Zip);
-  await engine.selectFirmware(publicR7Zip);
+  const { application, manifest } = await readFirmware(publicClassicZip);
+  await engine.selectFirmware(publicClassicZip);
   const receipt = await clock.run(engine.install({ firstInstall: false }));
   assertProgramTrafficOnly(wire);
   assert.deepEqual(wire.frames.filter(frame => frame[1] === 9).map(frame => [get32(frame, 12), frame[16]]),
@@ -395,7 +395,7 @@ test('actual Installer and Monitor revert a factory-format image without pre-rea
 test('actual Installer cannot complete or restart after Monitor rejects a written-sector CRC', async t => {
   const { clock, wire, monitor, engine, journal } = await ownerSetup(t);
   const boot = wire.images.program.slice(0, APP_START), data = wire.images.data.slice();
-  await engine.selectFirmware(publicR7Zip); wire.badCRCAt = 2;
+  await engine.selectFirmware(publicClassicZip); wire.badCRCAt = 2;
   await assert.rejects(clock.run(engine.install({ firstInstall: false })), /CRC failed/);
   assertProgramTrafficOnly(wire);
   assert.equal(writeFrames(wire).length, 2, 'A failed flash write is not retried.');
@@ -411,7 +411,7 @@ test('actual Installer cannot complete or restart after Monitor rejects a writte
 
 test('actual Installer preserves earned Monitor CRC results across reset loss without replaying writes', async t => {
   const { clock, wire, engine, journal } = await ownerSetup(t);
-  await engine.selectFirmware(publicR7Zip);
+  await engine.selectFirmware(publicClassicZip);
   const write = wire.write.bind(wire), fault = new DOMException('USB device vanished during reset', 'NetworkError');
   wire.write = async frame => {
     await write(frame);

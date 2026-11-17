@@ -2,9 +2,10 @@
 
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
-The initial source release preserves live version `2026-11-16-flasher-v3-2`.
-`LIVE-SNAPSHOT.json` records exact deployed runtime and shared-asset hashes.
-No runtime code, flash policy or radio protocol is changed by this extraction.
+The coordinated Classic r9 release uses flasher version
+`2026-11-16-flasher-v3-3`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
+catalog and shared-asset hashes. The flasher protocol and flash write scopes
+are unchanged.
 
 The tools provide First install, Update firmware, Backup / Restore, Revert to
 factory, Radio info and Create update file. Use desktop Chrome or Edge for Web
@@ -29,7 +30,9 @@ The generated `assets/monitor.bin` is ignored and is never a Git input.
 The helper's device-side source is absent from the pinned upstream tree; this
 is a pinned binary dependency, not a source-reproducible helper build.
 
-The unchanged live release catalog is checked in as metadata. Firmware ZIPs are
+The reviewed release catalog is checked in as metadata. Only Classic r9 is
+selectable for Classic; earlier Classic releases are removed from the catalog.
+Firmware ZIPs are
 not included. For local catalog installs, obtain a chosen public ZIP from
 `https://kd8zmm.com/open25-dm32/releases/` at its catalog-relative path and verify
 its catalog SHA-256, then place it under the corresponding ignored `releases/`
@@ -37,7 +40,7 @@ path. Manual ZIP selection is available. Classic/Next target names and a Next
 preview screenshot are public interface/assets; no Next firmware or CPS
 implementation is included.
 
-## Tests and initial release verification
+## Tests and release verification
 
 ```sh
 npm run prepare:tests
@@ -46,7 +49,7 @@ npm run verify
 npm run package
 ```
 
-`prepare:tests` additionally retrieves the exact public Classic r7 package used
+`prepare:tests` additionally retrieves the exact public current Classic package used
 by the existing installation/protocol and update-file builder tests. Its URL
 and SHA-256 are pinned in `dependencies.json`; it stays ignored. PHP 8.1+ is
 needed for collector tests; those tests skip when PHP is unavailable. Two
@@ -56,21 +59,31 @@ radios and local temporary logs; they do not access physical serial ports.
 
 `verify` compares source and assets with the recorded live hashes, checks any
 prepared dependency hashes and verifies the derived codec metadata. `package`
-writes only the initial flasher payload under ignored `build/site/`, including
-the locally prepared monitor. It refuses to replace an existing output. It
+writes only the reviewed flasher payload under ignored `build/site/`, including
+the locally prepared monitor. It refuses to replace an existing output; pass
+`python3 tools/package.py --out <fresh-directory>` for another destination. It
 includes no firmware ZIPs, homepage, CPS, v1/v2, deployment credentials or Git
 database. Keep existing hosted firmware packages/catalog paths when overlaying
 this payload. Packaging never uploads or deploys anything.
 
-Codec metadata is owned by `lib/dm32-codec-profiles.mjs`. The unchanged runtime
+Codec metadata is owned by `lib/dm32-codec-profiles.mjs`. The runtime
 copy under `v3/lib/` is derived. `tools/refresh_codec_profiles.py` refreshes both
 from the exact RadioFoundry pin identified in that tool. An intentional update
-needs refreshed initial-release manifests and qualification; do not edit the
+needs refreshed release manifests and qualification; do not edit the
 derived copy independently.
+
+## Classic r9 programming
+
+Classic r9 and its current CPS use RFKV programming only. Older Classic
+programming is not imported; recreate it in the new Classic CPS. The flasher
+shows this before a listed Classic install and links to Classic CPS after a
+successful install. Full-radio backup, full restore and factory recovery keep
+their existing independent behavior. The flasher does not rewrite codeplug
+records as part of an application update.
 
 ## Hosted diagnostics and qualification
 
-The unchanged PHP collector targets `https://kd8zmm.com` and writes logs outside
+The PHP collector targets `https://kd8zmm.com` and writes logs outside
 the document root under `/var/lib/open25-dm32`. Localhost and simulated radios
 do not submit diagnostics. Other hosts must deliberately configure their origin
 and private log directory. Server configuration, log contents and administrator
@@ -95,8 +108,8 @@ RadioFoundry-derived portions and existing MIT tools retain their MIT notices;
 see [THIRD_PARTY.md](v3/THIRD_PARTY.md) and [the MIT tool notice](LICENSES/MIT.txt).
 Browser icons, Baofeng screenshots and
 other third-party artwork retain their stated ownership and are not relicensed
-under GPL. The deployed provenance file is preserved verbatim; historical
-parent-tool references now refer to this standalone repository.
+under GPL. Original copyright and permission notices are retained. The root metadata
+owner and tools now belong to this standalone repository.
 
 Source code is published in
 [Open25-DM32-Flasher](https://github.com/tylerwatt12/Open25-DM32-Flasher).

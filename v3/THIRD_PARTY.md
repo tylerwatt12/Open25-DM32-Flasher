@@ -52,9 +52,10 @@ or runtime dependency.
 DM32 codec profiles, content-based discovery and the table memory window are
 adapted from RadioFoundry MIT `tools/hrc7000_codec.py`, DM32 codec maps and
 `boards/dm32/memory.ld` at `88283f6ce3aab4c5ff5c9995600de2acfa2c6f7b`.
-The parent `tools/refresh_codec_profiles.py` owns the v1/v2 metadata refresh.
-V3's frozen metadata copy is refreshed from the parent `lib/dm32-codec-profiles.mjs`
-and checked for equality by `tests/publication.test.mjs`; it is not edited independently.
+The repository root `lib/dm32-codec-profiles.mjs` owns the codec metadata.
+`tools/refresh_codec_profiles.py` refreshes it and the derived runtime copy under
+`v3/lib/` from the reviewed upstream pin. `tests/publication.test.mjs` checks
+the copies for equality; the runtime copy is not edited independently.
 No codec bytes are included. Firmware packages own their
 verified table limit; ZIPs without `codecTablesEnd` use the legacy limit.
 

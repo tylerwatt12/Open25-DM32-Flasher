@@ -5,42 +5,18 @@
     {
       "id": "classic",
       "name": "Open25-DM32 Classic",
-      "description": "RadioFoundry UI \u00b7 DMR, FM and conventional P25",
+      "description": "RadioFoundry UI · DMR, FM and conventional P25",
       "enabled": true,
       "variants": [
         {
           "id": "standard",
-          "name": "Standard \u00b7 DM-32UV",
+          "name": "Standard · DM-32UV",
           "releases": [
             {
-              "version": "0.1.0-rc1-r8",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r8-mit-application.zip",
-              "sha256": "1d110ddece26f285fce1f1c180f38438edf3bf60f598ee34fc6a7c22fc2bcd8b",
-              "notes": "MIT firmware source, P25 CAI and fixed-point full-rate IMBE codec. Fixes silent first DMR calls from a microphone-routing timing gap; the fix was confirmed on a DM-32UV. Adds P25 startup microphone conditioning and idle amplifier gating to address clicks and hiss. Separate RX/TX NACs are included; TX defaults to Same as RX, and older Classic builds skip split-NAC channels. Includes the MIT P25 codec and preserves the radio's separate proprietary DMR codec, bootloader and radio data. Full software, sanitizer, target stack/ABI and reproducible-build checks passed. Known issues: PL/CTCSS may drop during DTMF; an intermittent P25 PTT startup failure with no RF remains under investigation. Acoustic and hardware-revision qualification is incomplete. Save a full backup before installing."
-            },
-            {
-              "version": "0.1.0-rc1-r7",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r7-application.zip",
-              "sha256": "e1a5bd5072838e66c49a2fd85af42ad5ade2b846fe7d7593c38900b760124888",
-              "notes": "Improves repeated P25 calls, receive recovery, warning-beep audio ownership and switching between FM, DMR and P25. Preserves DCS signaling during DTMF. Known issue: PL/CTCSS signaling can drop while transmitting DTMF. Retains r6 codec compatibility. Application-only package: uses the codec read from your own radio; no codec bytes are distributed. Bootloader and radio data are preserved. Save a full backup before installing. Release candidate; microphone/speaker audio, every hardware revision and all RF conditions have not been qualified."
-            },
-            {
-              "version": "0.1.0-rc1-r6",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r6-application.zip",
-              "sha256": "48108fb040da0513406af7c8952c64c8b23ca334732c3378fab67df270dfe0e1",
-              "notes": "Adds RadioFoundry-compatible DM32 codec profiles through NRFB .050, including .046 HR and NRF/fanti .049. The firmware table memory limit matches current RadioFoundry. Application-only package: prepares or preserves the codec read from your own radio; no codec bytes are distributed. Bootloader and radio data are preserved. Earlier releases remain available but cannot use the wider .050 codec tables. Save a full backup before installing. Release candidate; final on-air qualification remains incomplete."
-            },
-            {
-              "version": "0.1.0-rc1-r5",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r5-application.zip",
-              "sha256": "d015dd2b03885e6b8eede337b9b4dbe72bbe68e111b2e2f0e716ab427c79d0b8",
-              "notes": "Fixes Start new when another firmware\u2019s settings prevent saving a new codeplug. Success is shown only after creation and the requested edit are saved. Release candidate: RadioFoundry UI with DMR, FM and conventional P25. Application-only package; uses the codec already on your radio. First installation supports OEM .048, .049 and NRF .049; later updates preserve the prepared codec. Bootloader and radio data are preserved during flashing. Save a full backup before installing. Final on-air qualification remains incomplete."
-            },
-            {
-              "version": "0.1.0-rc1-r4",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r4-application.zip",
-              "sha256": "31336076ffebee541c479b4dca8d45864b670ea88be90dea0217191584737696",
-              "notes": "Release candidate: RadioFoundry UI with DMR, FM and conventional P25. Application-only package; uses the codec already on your radio. First installation supports OEM .048, .049 and NRF .049; later updates preserve the prepared codec. Bootloader and radio data are preserved. Save a full backup before installing. Final on-air qualification remains incomplete."
+              "version": "0.1.0-rc1-r9",
+              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r9-rfkv-application.zip",
+              "sha256": "12433305d74cc82cdae4979779e626b77342c16b63349e86ecbb7da80cc2a362",
+              "notes": "Coordinated Classic firmware and CPS release using RadioFoundry RFKV programming. Earlier Classic programming is not imported; choose Start new and recreate programming in the current Classic CPS. Includes current Classic identity and light-theme defaults, saved-channel refresh and NRFB hardware support. The application-only package uses the radio’s own DMR codec and preserves the bootloader and data chip during flashing. Full host software, sanitizer, target stack/ABI, warning and identical forced-rebuild checks passed. Physical-radio qualification of this new-format release has not been performed. Known issues: PL/CTCSS can drop during DTMF, and an intermittent P25 PTT startup with no RF remains under investigation. Save a full backup before installing."
             }
           ]
         }
@@ -49,7 +25,7 @@
     {
       "id": "next",
       "name": "Open25-DM32 Next",
-      "description": "New UI \u00b7 FM and conventional / trunked P25",
+      "description": "New UI · FM and conventional / trunked P25",
       "enabled": false,
       "releaseDate": "TBD",
       "variants": []

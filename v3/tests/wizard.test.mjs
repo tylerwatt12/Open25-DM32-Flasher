@@ -259,7 +259,7 @@ test('only the power-on timeout adds bounded connection context to the existing 
       serialNumber: 'private-cable-id', rawBytes: 'private radio data' } });
   await ui.mode('info'); await ui.click('connect');
   const event = ui.calls.diagnostics.find(event => event.workflow === 'connect' && event.event === 'operation_failed');
-  assert.equal(event.appVersion, '2026-11-16-flasher-v3-2');
+  assert.equal(event.appVersion, '2026-11-16-flasher-v3-3');
   assert.equal(event.error.code, 'rom_no_handshake');
   assert.match(event.error.message, /USB 067b:2303 RX=9999999 TX=9999999 W=9999999:9999999 E=9999999:BufferOverrunError maxW=9999999ms/);
   assert.match(event.error.message, /Restart radio and retry\.$/);
@@ -287,11 +287,14 @@ test('first install uses the existing ZIP and waits for an explicit write withou
   assert.equal(ui.calls.ports, 0);
   await ui.click('connect');
   assert.match(ui.html(), /Ready to install/);
+  assert.match(ui.html(), /This release uses the new Classic CPS/);
+  assert.match(ui.html(), /Older Classic programming is not imported/);
   assert.doesNotMatch(ui.html(), /Save a full backup|Skip backup/);
   assert.equal(ui.calls.writes, 0); assert.equal(ui.calls.saves, 0);
   await ui.click('flash');
   assert.equal(ui.calls.writes, 1); assert.equal(ui.calls.saves, 0);
   assert.match(ui.html(), /Flash complete!/);
+  assert.match(ui.html(), /href="\.\.\/classic-cps\/">Open Classic CPS/);
   assert.doesNotMatch(ui.html(), /Both complete flash chips|Firmware verified/);
   assert.equal(ui.calls.reads.filter(read => read.memory === 'data').length, 0);
 });
@@ -392,7 +395,7 @@ test('hosted direct-write outcomes identify checksum verification without claimi
   const event = ui.calls.diagnostics.find(event => event.workflow === 'update' && event.event === 'operation_succeeded');
   assert(event); assert.equal(event.verificationMethod, 'sector-crc32');
   assert.equal(event.readbackVerified, false); assert.equal(event.verificationSkipped, false);
-  assert.equal(event.appVersion, '2026-11-16-flasher-v3-2');
+  assert.equal(event.appVersion, '2026-11-16-flasher-v3-3');
 });
 
 test('write failure diagnostics preserve received support ID and sanitize private file details', async t => {
@@ -404,7 +407,7 @@ test('write failure diagnostics preserve received support ID and sanitize privat
   assert.doesNotMatch(event.error.message, /owner-radio|private\.example|0123456789abcdef/);
   await ui.elementClick('copy-support-id');
   assert(ui.calls.copied[0].includes(event.operationId));
-  assert(ui.calls.copied[0].includes('flasher-v3-2'));
+  assert(ui.calls.copied[0].includes('flasher-v3-3'));
 });
 
 test('restart failure preserves completed checksum result and reports manual power cycle', async t => {
