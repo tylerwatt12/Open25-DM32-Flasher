@@ -7,6 +7,11 @@ The coordinated Classic r9 release uses flasher version
 catalog and shared-asset hashes. The flasher protocol and flash write scopes
 are unchanged.
 
+The tools homepage lists Flasher v3, Classic CPS and Next CPS. Classic CPS
+supports Open25-DM32 Classic firmware R9 and newer. Retired Flasher v1/v2
+choices are removed from the homepage; their former public entry URLs redirect
+to [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html).
+
 The tools provide First install, Update firmware, Backup / Restore, Revert to
 factory, Radio info and Create update file. Use desktop Chrome or Edge for Web
 Serial. Choose the intended operation before connecting; writing requires its
