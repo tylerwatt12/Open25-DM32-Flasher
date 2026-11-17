@@ -5,18 +5,18 @@
     {
       "id": "classic",
       "name": "Open25-DM32 Classic",
-      "description": "RadioFoundry UI · DMR, FM and conventional P25",
+      "description": "RadioFoundry UI \u00b7 DMR, FM and conventional P25",
       "enabled": true,
       "variants": [
         {
           "id": "standard",
-          "name": "Standard · DM-32UV",
+          "name": "Standard \u00b7 DM-32UV",
           "releases": [
             {
-              "version": "0.1.0-rc1-r9",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r9-rfkv-application.zip",
-              "sha256": "12433305d74cc82cdae4979779e626b77342c16b63349e86ecbb7da80cc2a362",
-              "notes": "Coordinated Classic firmware and CPS release using RadioFoundry RFKV programming. Earlier Classic programming is not imported; choose Start new and recreate programming in the current Classic CPS. Includes current Classic identity and light-theme defaults, saved-channel refresh and NRFB hardware support. The application-only package uses the radio’s own DMR codec and preserves the bootloader and data chip during flashing. Full host software, sanitizer, target stack/ABI, warning and identical forced-rebuild checks passed. Physical-radio qualification of this new-format release has not been performed. Known issues: PL/CTCSS can drop during DTMF, and an intermittent P25 PTT startup with no RF remains under investigation. Save a full backup before installing."
+              "version": "0.1.0-rc1-r10",
+              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r10-rfkv-application.zip",
+              "sha256": "965f241de8b8af0b7ecf452edbb195bc36e3b6089b49b5401581bcb7abc8c1fa",
+              "notes": "Classic r10 adds RX-only defaults for new/copied channels and changed transmit frequencies outside the amateur bands. Turning RX-only off requires an explicit Enable TX confirmation in the firmware and matching Classic CPS. Existing RFKV programming is preserved; the independent P25 transmit-band restriction is unchanged. RFKV programming only: retired Classic formats are not imported. The application-only package uses the radio\u2019s own DMR codec and preserves the bootloader and data chip during flashing. Full host software, sanitizer, browser, target stack/ABI, warning and identical forced-rebuild checks passed. Physical-radio qualification of this release has not been performed. Known issues: PL/CTCSS can drop during DTMF, and an intermittent P25 PTT startup with no RF remains under investigation. Save a full backup before installing."
             }
           ]
         }
@@ -25,7 +25,7 @@
     {
       "id": "next",
       "name": "Open25-DM32 Next",
-      "description": "New UI · FM and conventional / trunked P25",
+      "description": "New UI \u00b7 FM and conventional / trunked P25",
       "enabled": false,
       "releaseDate": "TBD",
       "variants": []

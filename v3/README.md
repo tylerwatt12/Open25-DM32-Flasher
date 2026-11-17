@@ -1,6 +1,6 @@
 # Flasher v3
 
-This directory contains the coordinated Classic r9 Flasher v3 runtime. See the
+This directory contains the coordinated Classic r10 Flasher v3 runtime. See the
 [root README](../README.md) for standalone setup, testing, dependencies,
 licensing, diagnostics and release scope. Run `npm start` from either this
 directory or the repository root; open `/v3/firmware.html` on port 8326.

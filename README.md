@@ -2,8 +2,8 @@
 
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
-The coordinated Classic r9 release uses flasher version
-`2026-11-16-flasher-v3-3`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
+The coordinated Classic r10 release uses flasher version
+`2026-11-16-flasher-v3-4`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
 catalog and shared-asset hashes. The flasher protocol and flash write scopes
 are unchanged.
 
@@ -35,7 +35,7 @@ The generated `assets/monitor.bin` is ignored and is never a Git input.
 The helper's device-side source is absent from the pinned upstream tree; this
 is a pinned binary dependency, not a source-reproducible helper build.
 
-The reviewed release catalog is checked in as metadata. Only Classic r9 is
+The reviewed release catalog is checked in as metadata. Only Classic r10 is
 selectable for Classic; earlier Classic releases are removed from the catalog.
 Firmware ZIPs are
 not included. For local catalog installs, obtain a chosen public ZIP from
@@ -77,9 +77,9 @@ from the exact RadioFoundry pin identified in that tool. An intentional update
 needs refreshed release manifests and qualification; do not edit the
 derived copy independently.
 
-## Classic r9 programming
+## Classic r9 and newer programming
 
-Classic r9 and its current CPS use RFKV programming only. Older Classic
+Classic r9 and newer use RFKV programming with the current CPS. Older Classic
 programming is not imported; recreate it in the new Classic CPS. The flasher
 shows this before a listed Classic install and links to Classic CPS after a
 successful install. Full-radio backup, full restore and factory recovery keep
@@ -121,3 +121,13 @@ Source code is published in
 Source publication and this repository's commands do not deploy or change the
 live site. GitHub is source-only; firmware packages continue to be hosted on
 kd8zmm.com.
+
+## Classic r10 RX-only defaults
+
+Classic r10 and the matching Classic CPS default new/copied channels and edits
+that change the actual transmit frequency outside 144–148 or 420–450 MHz to
+RX-only. Turning RX-only off outside those bands requires an explicit
+**Enable TX** confirmation; **Keep RX-only** is selected by default. Existing
+RFKV programming is retained. The independent P25 transmit-band restriction
+still applies. This is an editor default and confirmation, not a new radio
+unlock or a prompt on every PTT press.
