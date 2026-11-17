@@ -1,7 +1,7 @@
 {
   "captured_utc": "2026-11-17T04:17:50.081795+00:00",
   "url": "https://kd8zmm.com/open25-dm32/v3/firmware.html",
-  "version": "2026-11-16-flasher-v3-5",
+  "version": "2026-11-17-flasher-v3-6",
   "files_sha256": {
     "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
     "assets/classic-home.png": "5e8fa488ee3683f946aea5a73cf23f311c8e1d3f667b7dece84f05eb96e34b14",
@@ -10,9 +10,9 @@
     "assets/next-home.png": "09238235e3f9d9239ccf6c51cfdabf7e23391f227ca40866d68520e9d5092999",
     "assets/radio.svg": "07abec106489dc488ce6dabf57ce58341da5fc5b3aca3729e25344183ee6b0e8",
     "assets/restart-radio.svg": "c458afdb4c9a7d8504128d66539adf2de33fe82c61a45f9293825f905f70e1ec",
-    "releases/catalog.json": "1569359b862ccf9c5e70537577fe21aa98fba86312c95bf6a9973247e70ecdf3",
+    "releases/catalog.json": "7c94fa50fc07de1ba46222114377b3534afc504f2f4950e90ea8ce2fbe2659a0",
     "v3/THIRD_PARTY.md": "f9aee37ae54bafecad6f6dd5851f65d336b1ced5aca42ce58636bc3be8bc56dd",
-    "v3/app.mjs": "bf06a0e7e1a069f0046cdb99ccc7e9d649a944f3969944fed06fae34baab96f3",
+    "v3/app.mjs": "6e8bccc0dff449c101d71361085c5454e3edd587e3f4da8e76654d740d4a027f",
     "v3/assets/baofeng-com-settings.png": "1582ee329b5bbf5c4b17cdb644e47e680b9b35b12a376b394a527348a38e1a41",
     "v3/assets/baofeng-communication-failed.png": "3ac777b6223a0a7d352d10280d64931466fa7ac1edda71db524b4a9d7529fc77",
     "v3/assets/baofeng-cps-icon.png": "e7bb3d5b34727c63facd25bea7042ba86484eaa75b011460ab2ae5553a0216ff",

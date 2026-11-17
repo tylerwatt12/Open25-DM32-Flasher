@@ -2,8 +2,8 @@
 
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
-The coordinated Classic r10 release uses flasher version
-`2026-11-16-flasher-v3-5`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
+The coordinated Classic r11 release uses flasher version
+`2026-11-17-flasher-v3-6`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
 catalog and shared-asset hashes. The flasher protocol and flash write scopes
 are unchanged.
 
@@ -37,7 +37,7 @@ The generated `assets/monitor.bin` is ignored and is never a Git input.
 The helper's device-side source is absent from the pinned upstream tree; this
 is a pinned binary dependency, not a source-reproducible helper build.
 
-The reviewed release catalog is checked in as metadata. Only Classic r10 is
+The reviewed release catalog is checked in as metadata. Only Classic r11 is
 selectable for Classic; earlier Classic releases are removed from the catalog.
 Firmware ZIPs are
 not included. For local catalog installs, obtain a chosen public ZIP from
@@ -133,3 +133,10 @@ RX-only. Turning RX-only off outside those bands requires an explicit
 RFKV programming is retained. The independent P25 transmit-band restriction
 still applies. This is an editor default and confirmation, not a new radio
 unlock or a prompt on every PTT press.
+
+## Classic r11 P25 capability fix
+
+Classic r11 advertises saved conventional P25 support in the firmware VERSION
+response, restoring the P25 mode choice in Classic CPS after connecting. It
+preserves existing RFKV programming and the r10 RX-only defaults. The catalog
+offers r11 only; previously hosted package URLs remain available.
