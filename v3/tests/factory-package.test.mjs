@@ -6,7 +6,7 @@ import { buildFactoryUpdate, readFactoryFirmware } from '../lib/factory.mjs';
 import { readFirmware } from '../lib/firmware.mjs';
 import { DM32_CODEC, checkDm32Codec, codecTablesEnd, prepareDm32Codec } from '../lib/policy.mjs';
 import { verifyArchive } from '../lib/archive.mjs';
-import { jsonBytes, zip } from '../lib/zip.mjs';
+import { jsonBytes, zip, unzip, readJSON } from '../lib/zip.mjs';
 import { syntheticCodec } from './codec-fixture.mjs';
 
 const catalog = JSON.parse(await readFile(new URL('../../releases/catalog.json', import.meta.url)));
@@ -115,4 +115,11 @@ test('actual private OEM firmware supplies a recognized native codec for the pub
   const result = await buildFactoryUpdate(publicZip, oemFile(backup.images.program));
   assert.equal(result.codec.prepared, true);
   assertCandidate(result, await readFirmware(publicZip), prepared.slot);
+});
+
+
+test('offline export cannot bypass a package-required programming format check', async () => {
+  const files = unzip(await firmware()), manifest = readJSON(files, 'firmware.json');
+  manifest.programming = { schema: 'rfkv-p25-contact-v1' }; files.set('firmware.json', jsonBytes(manifest));
+  await assert.rejects(buildFactoryUpdate(zip(files), syntheticOem()), /connected flasher/);
 });

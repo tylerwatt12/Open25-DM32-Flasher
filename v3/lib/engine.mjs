@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { APP_START, SECTOR, assert, equal, filled, sha256 } from './bytes.mjs';
-import { captureBackup, saveAndVerify, verifyArchive } from './archive.mjs';
+import { captureBackup, saveAndVerify } from './archive.mjs';
 import { readFirmware } from './firmware.mjs';
+import { inspectProgramming, planProgrammingMigration, PROGRAMMING_RANGES } from './programming.mjs';
+import { identifyProgrammingSource } from './programming-source.mjs';
+import { createMigrationArchive, verifyMigrationArchive, readRestoreArchive, isProgrammingSector } from './migration-archive.mjs';
 import { readFactoryFirmware } from './factory.mjs';
 import { bootCompatibilityHash, recognizesDm32, codecTablesEnd, DM32_CODEC, usesDm32Codec, checkDm32Codec, prepareDm32Codec, codecDiagnosticInfo } from './policy.mjs';
 
 export class Installer {
   #radio; #connected = false; #epoch = 0; #busy = false; #backup; #firmware; #identity; #journal; #operation;
+  #programming;
   #verifying = false; #skipVerification = false; #operationResult; #connectionError;
   constructor({ journal, progress = () => {} } = {}) {
     this.#journal = journal; this.progress = progress;
@@ -16,6 +20,7 @@ export class Installer {
       firmware: this.#firmware?.manifest.release, identity: this.#identity ? structuredClone(this.#identity) : null,
       modelRecognized: this.#radio?.simulated === true || !!this.#identity && recognizesDm32(this.#identity.chips, this.#identity.bootPrefixSha256),
       canSkipVerification: this.#verifying && !this.#skipVerification,
+      programming: this.#programming ? { sourceSchema: this.#programming.plan.sourceSchema, targetSchema: this.#programming.plan.targetSchema, changed: this.#programming.plan.changes.length > 0, summary: structuredClone(this.#programming.plan.summary) } : null,
       firmwareSha256: this.#firmware?.manifest.applicationSha256, backup: this.#backup?.filename || null });
   }
   async #exclusive(work) {
@@ -29,7 +34,7 @@ export class Installer {
   }
   invalidate(error) {
     if (error && !this.#connectionError) this.#connectionError = error;
-    this.#connected = false; this.#epoch++; this.#backup = undefined; this.#firmware = undefined; this.#identity = undefined;
+    this.#connected = false; this.#epoch++; this.#backup = undefined; this.#firmware = undefined; this.#programming = undefined; this.#identity = undefined;
     // An earned write result remains reportable after disconnect; it never
     // authorizes another write. A new connection, file selection or write
     // attempt revokes it.
@@ -43,7 +48,7 @@ export class Installer {
   }
   clearFiles() {
     assert(!this.#busy, 'Wait for the current operation.');
-    this.#backup = undefined; this.#firmware = undefined; this.#operation = undefined; this.#operationResult = undefined;
+    this.#backup = undefined; this.#firmware = undefined; this.#programming = undefined; this.#operation = undefined; this.#operationResult = undefined;
   }
   async attach(radio, signal, reportHardware) {
     assert(!this.#busy, 'Wait for the current operation.');
@@ -71,11 +76,33 @@ export class Installer {
   }
   async selectFirmware(bytes) {
     return this.#exclusive(async check => {
-      this.#firmware = undefined; this.#backup = undefined; this.#operation = undefined; this.#operationResult = undefined;
+      this.#firmware = undefined; this.#programming = undefined; this.#backup = undefined; this.#operation = undefined; this.#operationResult = undefined;
       const firmware = await readFirmware(bytes); check();
       assert(APP_START + firmware.application.length <= Math.min(this.#radio.chips.program.size, DM32_CODEC.start), 'This application overlaps the reserved codec area. Choose an application-only firmware ZIP.');
+      if (firmware.manifest.programming) {
+        const data = await this.#readProgramming(check);
+        const application = await this.#radio.read('program', APP_START, DM32_CODEC.start - APP_START,
+          progress => this.progress({ ...progress, phase: 'preflight', message: 'Identifying the installed programming format' })); check();
+        assert(application.length === DM32_CODEC.start - APP_START, 'Incomplete source application read.');
+        const sourceIdentity = await identifyProgrammingSource({ application,
+          targetManifest: { ...firmware.manifest, applicationBytes: firmware.application.length } }); check();
+        const inspected = inspectProgramming({ data, sourceIdentity });
+        assert(inspected.schema, 'Stored programming format is not recognized. No flash was written.');
+        const plan = planProgrammingMigration({ data, sourceIdentity, sourceSchema: inspected.schema, targetSchema: firmware.manifest.programming.schema });
+        this.#programming = { data, plan, sourceIdentity, applicationSha256: await sha256(application), sourceSha256: await sha256(data) }; check();
+      }
       this.#firmware = firmware; return firmware.manifest;
     });
+  }
+  async #readProgramming(check) {
+    const data = filled(this.#radio.chips.data.size);
+    for (const { start, end } of PROGRAMMING_RANGES) {
+      assert(end <= data.length, 'Data flash is too small for this programming layout.');
+      const bytes = await this.#radio.read('data', start, end - start,
+        progress => this.progress({ ...progress, phase: 'preflight', message: 'Checking stored radio programming' })); check();
+      assert(bytes.length === end - start, 'Incomplete programming-memory read.'); data.set(bytes, start);
+    }
+    return data;
   }
   async backupToDisk(handle, signal) {
     return this.#exclusive(async check => {
@@ -167,32 +194,38 @@ export class Installer {
   async #writeProgram(plan, operation, check, metadata = {}) {
     this.#operation = this.#operationResult = undefined;
     this.#skipVerification = false;
-    const entry = plan.findIndex(sector => sector.address === APP_START);
+    const scoped = metadata.migration === true;
+    const method = scoped ? 'sector-readback' : 'sector-crc32';
+    const entry = plan.findIndex(sector => (sector.memory === undefined || sector.memory === 'program') && sector.address === APP_START);
     if (entry !== -1) plan.push(...plan.splice(entry, 1));
     const receipt = { version: 2, operation, simulated: this.#radio.simulated === true,
       startedAt: new Date().toISOString(), identity: this.#identity,
-      verificationMethod: 'sector-crc32', readbackVerified: false, verificationSkipped: false,
-      writtenRanges: metadata.writtenRanges, firmware: metadata.firmware,
-      codec: metadata.codec, sourceSha256: metadata.sourceSha256,
-      sectors: plan.map(({ address }) => ({ memory: 'program', address })), done: 0, state: 'prepared' };
+      verificationMethod: method, readbackVerified: false, sectorReadbackVerified: false, verificationSkipped: false,
+      writtenRanges: metadata.writtenRanges || plan.map(({ memory = 'program', address }) => ({ memory, start: address, end: address + SECTOR })), firmware: metadata.firmware,
+      codec: metadata.codec, sourceSha256: metadata.sourceSha256, programming: metadata.programming,
+      recovery: metadata.recovery,
+      sectors: plan.map(({ address, memory = 'program' }) => ({ memory, address })), done: 0, state: 'prepared' };
     assert(this.#journal?.write, 'A current operation report is required.');
     await this.#journal.write(receipt); check(); this.#operation = receipt;
     try {
       receipt.state = 'writing'; await this.#journal.write(receipt); check();
-      await this.#radio.writeProgram(plan, async progress => {
+      const writer = scoped ? this.#radio.writeMigration : this.#radio.writeProgram;
+      assert(typeof writer === 'function', 'This radio connection cannot perform verified programming migration.');
+      await writer.call(this.#radio, plan, async progress => {
         check(); receipt.done = progress.done; await this.#journal.write(receipt);
-        this.progress({ ...progress, phase: operation === 'factory' ? 'install' : operation,
-          message: operation === 'factory' ? 'Writing Baofeng firmware' : 'Writing firmware and checking sector checksums' });
+        this.progress({ ...progress, phase: operation === 'factory' ? 'install' : operation === 'recovery' ? 'restore' : operation,
+          message: scoped ? operation === 'recovery' ? 'Restoring original firmware and programming' : 'Updating firmware and converting programming' : operation === 'factory' ? 'Writing Baofeng firmware' : 'Writing firmware and checking sector checksums' });
       });
       check();
-      receipt.state = 'sector-crc32-verified'; this.#operationResult = receipt.state;
+      receipt.sectorReadbackVerified = scoped;
+      receipt.state = `${method}-verified`; this.#operationResult = receipt.state;
       await this.#journal.write(receipt);
       receipt.resetSent = false;
       if (this.#radio.restartVerified) {
         this.progress({ phase: 'restart', message: 'Restarting the radio' });
         try {
           check();
-          await this.#radio.restartVerified({ verificationMethod: 'sector-crc32' });
+          await this.#radio.restartVerified({ verificationMethod: method });
           check(); receipt.resetSent = true;
         } catch (error) {
           receipt.restartError = { name: String(error?.name || 'Error').slice(0, 80), message: String(error?.message || error).slice(0, 500) };
@@ -208,12 +241,20 @@ export class Installer {
       this.#operationResult = undefined; this.invalidate(error); throw error;
     }
   }
-  async install({ firstInstall } = {}) {
+  async install({ firstInstall, recoveryHandle } = {}) {
     return this.#exclusive(async check => {
       check(); this.#operation = this.#operationResult = undefined;
       assert(typeof firstInstall === 'boolean', 'Choose First install or Update before flashing.');
       assert(this.#firmware, 'Choose a validated firmware package first.');
       assert(this.#radio.chips.program.size >= DM32_CODEC.end, 'Program flash is too small for this application layout.');
+      if (this.#programming) {
+        assert(await sha256(await this.#readProgramming(check)) === this.#programming.sourceSha256, 'Programming changed after review. Reconnect and select the firmware again. No flash was written.'); check();
+        const application = await this.#radio.read('program', APP_START, DM32_CODEC.start - APP_START,
+          progress => this.progress({ ...progress, phase: 'preflight', message: 'Rechecking the installed firmware identity' })); check();
+        assert(application.length === DM32_CODEC.start - APP_START && await sha256(application) === this.#programming.applicationSha256, 'Source firmware changed after review. No flash was written.');
+        if (this.#programming.plan.changes.length)
+          assert(recoveryHandle?.getFile && (await recoveryHandle.getFile()).size === 0, 'Save a new migration recovery ZIP before installing. No flash was written.');
+      }
       const plan = [], writtenRanges = [{ memory: 'program', start: APP_START, end: DM32_CODEC.start }];
       let codecInfo, codecWritten = false;
       if (usesDm32Codec(this.#firmware.manifest)) {
@@ -251,6 +292,39 @@ export class Installer {
       application.set(this.#firmware.application);
       for (let offset = 0; offset < application.length; offset += SECTOR)
         plan.push({ address: APP_START + offset, data: application.slice(offset, offset + SECTOR) });
+      if (this.#programming?.plan.changes.length) {
+        const original = await this.#radio.read('program', APP_START, DM32_CODEC.end - APP_START,
+          progress => this.progress({ ...progress, phase: 'preflight', message: 'Reading original firmware for migration recovery' })); check();
+        assert(original.length === DM32_CODEC.end - APP_START, 'Incomplete original firmware image.');
+        const repeated = await this.#radio.read('program', APP_START, original.length,
+          progress => this.progress({ ...progress, phase: 'preflight', message: 'Checking original firmware recovery image' })); check();
+        assert(equal(original, repeated), 'Original firmware changed during recovery capture. No flash was written.');
+        assert(await sha256(original.subarray(0, DM32_CODEC.start - APP_START)) === this.#programming.applicationSha256, 'Source firmware changed after review. No flash was written.');
+        const { plan: conversion, sourceSha256 } = this.#programming;
+        const combined = conversion.changes.map(({ address, before, after }) => {
+          assert(isProgrammingSector(address) && equal(before, this.#programming.data.subarray(address, address + SECTOR)), 'Migration plan differs from reviewed programming.');
+          return { memory: 'data', address, before, data: after };
+        });
+        const targetProgram = original.slice();
+        for (const sector of plan) {
+          const before = original.slice(sector.address - APP_START, sector.address - APP_START + SECTOR);
+          targetProgram.set(sector.data, sector.address - APP_START);
+          if (!equal(before, sector.data)) combined.push({ ...sector, memory: 'program', before });
+        }
+        const calibration = await this.#radio.read('data', 0x710000, SECTOR); check();
+        assert(calibration.length === SECTOR, 'Incomplete calibration identity read.');
+        const identity = { ...this.#identity, uniqueHardwareIdentity: false, calibrationPageSha256: await sha256(calibration) };
+        const capture = await createMigrationArchive({ identity, simulated: this.#radio.simulated,
+          program: original, changes: conversion.changes, sourceSchema: conversion.sourceSchema,
+          targetSchema: conversion.targetSchema, summary: conversion.summary, sourceSha256, sourceIdentity: this.#programming.sourceIdentity,
+          firmwareSha256: this.#firmware.manifest.applicationSha256, targetProgramSha256: await sha256(targetProgram) }); check();
+        this.progress({ phase: 'save', message: 'Saving and reopening the migration recovery ZIP' });
+        const saved = await saveAndVerify(capture, recoveryHandle, verifyMigrationArchive); check();
+        return this.#writeProgram(combined, 'install', check, { migration: true, writtenRanges: [...writtenRanges, ...conversion.changes.map(({ address }) => ({ memory: 'data', start: address, end: address + SECTOR }))],
+          firmware: this.#firmware.manifest, codec: codecInfo, sourceSha256,
+          programming: { sourceIdentity: this.#programming.sourceIdentity, sourceSchema: conversion.sourceSchema, targetSchema: conversion.targetSchema, summary: conversion.summary },
+          recovery: { filename: saved.filename, sha256: saved.sha256 } });
+      }
       return this.#writeProgram(plan, 'install', check, { writtenRanges, firmware: this.#firmware.manifest, codec: codecInfo });
     });
   }
@@ -316,8 +390,29 @@ export class Installer {
     return this.#exclusive(async check => {
       check(); this.#operation = this.#operationResult = undefined;
       assert(sameRadioConfirmed === true, 'Confirm that this archive belongs to the connected physical radio.');
-      const saved = await verifyArchive(bytes); check();
+      const saved = await readRestoreArchive(bytes); check();
       assert(saved.manifest.simulated === (this.#radio.simulated === true), 'Simulation archives cannot restore a physical radio.');
+      if (saved.manifest.format === 'open25-dm32-migration-recovery') {
+        assert(JSON.stringify(saved.manifest.identity.chips) === JSON.stringify(this.#radio.chips) && saved.manifest.identity.bootSha256 === this.#identity.bootSha256, 'Recovery archive does not match this radio.');
+        const calibration = await this.#radio.read('data', 0x710000, SECTOR); check();
+        assert(await sha256(calibration) === saved.manifest.identity.calibrationPageSha256, 'Recovery calibration fingerprint differs. No flash was written.');
+        const plan = [];
+        for (const { address, before: data } of saved.changes) {
+          const before = await this.#radio.read('data', address, SECTOR); check();
+          if (!equal(before, data)) plan.push({ memory: 'data', address, before, data });
+        }
+        const current = await this.#radio.read('program', APP_START, saved.program.length); check();
+        assert(current.length === saved.program.length, 'Incomplete recovery preflight.');
+        for (let offset = 0; offset < current.length; offset += SECTOR) {
+          const before = current.slice(offset, offset + SECTOR), data = saved.program.slice(offset, offset + SECTOR);
+          if (!equal(before, data)) plan.push({ memory: 'program', address: APP_START + offset, before, data });
+        }
+        // Even an already-restored image earns fresh sector readback proof.
+        if (!plan.length) plan.push({ memory: 'program', address: APP_START, before: current.slice(0, SECTOR), data: saved.program.slice(0, SECTOR) });
+        return this.#writeProgram(plan, 'recovery', check, { migration: true,
+          programming: { sourceSchema: saved.manifest.targetSchema, targetSchema: saved.manifest.sourceSchema },
+          recovery: { filename: archiveFilename || null, sha256: saved.sha256 } });
+      }
       for (const memory of ['program', 'data'])
         assert(saved.images[memory].length === this.#radio.chips[memory].size, 'Backup image does not fit the connected flash chip.');
       const before = await this.#snapshot(check, 'preflight');
@@ -328,8 +423,9 @@ export class Installer {
     return this.#exclusive(async () => {
       const verified = this.#operationResult === 'readback-verified' && receipt?.readbackVerified === true && receipt?.verificationSkipped === false;
       const checksum = this.#operationResult === 'sector-crc32-verified' && receipt?.verificationMethod === 'sector-crc32' && receipt?.readbackVerified === false && receipt?.verificationSkipped === false;
+      const scoped = this.#operationResult === 'sector-readback-verified' && receipt?.verificationMethod === 'sector-readback' && receipt?.sectorReadbackVerified === true && receipt?.verificationSkipped === false;
       const skipped = this.#operationResult === 'verification-skipped' && receipt?.readbackVerified === false && receipt?.verificationSkipped === true;
-      assert(receipt && receipt === this.#operation && receipt.state === this.#operationResult && (verified || checksum || skipped), 'A current completed write result is required before completion.');
+      assert(receipt && receipt === this.#operation && receipt.state === this.#operationResult && (verified || checksum || scoped || skipped), 'A current completed write result is required before completion.');
       const complete = { ...receipt, state: 'complete' };
       await this.#journal.write(complete); this.#operation = this.#operationResult = undefined; return complete;
     });

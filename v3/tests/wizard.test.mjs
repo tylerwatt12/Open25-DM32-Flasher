@@ -14,6 +14,9 @@ import { MONITOR_SHA256, DM32_CODEC } from '../lib/policy.mjs';
 import { APP_START, sha256 } from '../lib/bytes.mjs';
 import { MAX_ARCHIVE, jsonBytes, zip } from '../lib/zip.mjs';
 import { verifyArchive } from '../lib/archive.mjs';
+import { readRestoreArchive, verifyMigrationArchive } from '../lib/migration-archive.mjs';
+import { legacyProgrammingFixture } from './programming-fixture.mjs';
+import { NATIVE_SCHEMA } from '../lib/programming.mjs';
 import { readFirmware, validateCatalog, downloadPackage, packageURL } from '../lib/firmware.mjs';
 import { SimulatedRadio } from './simulator.mjs';
 import { MemoryFile } from './helpers.mjs';
@@ -44,7 +47,7 @@ const catalog = { format: 'open25-dm32-catalog', version: 1, channels: [
 
 async function wizard(t, { failStarts = 0, startGate, verificationGate, hosted = false, privacy = {}, physical = false,
   prepared = true, confirmSkip = true, failWrites = false, failVerify = false, restartFault, diagnosticResponse = 'ok', serialSupported = true,
-  chooseError, saveError, copyError, controlAppTimers = false, startError, serialDiagnostics = {}, chips, onProgress, hash = '', noticeStorage = new Map(), noticeStorageUnavailable = false } = {}) {
+  chooseError, saveError, copyError, programmingSnapshot, controlAppTimers = false, startError, serialDiagnostics = {}, chips, onProgress, hash = '', noticeStorage = new Map(), noticeStorageUnavailable = false } = {}) {
   const calls = { files: 0, downloads: 0, exports: [], ports: 0, saves: 0, radios: [], transports: [], reads: [], progress: [], writes: 0, diagnostics: [], diagnosticRequests: [], confirms: [], copied: [] };
   const elements = new Map();
   const objectURLs = new Map(); let objectURL = 0;
@@ -108,7 +111,7 @@ async function wizard(t, { failStarts = 0, startGate, verificationGate, hosted =
     async open() {}
   }
   class Monitor extends SimulatedRadio {
-    constructor() { super(); calls.radios.push(this); }
+    constructor() { super(); calls.radios.push(this); if (programmingSnapshot) this.migrationImages = { program: programmingSnapshot.program.slice(), data: programmingSnapshot.data.slice() }; }
     get simulated() { return !physical; }
     get chips() { return chips ? structuredClone(chips) : super.chips; }
     async start(image, progress) {
@@ -125,7 +128,8 @@ async function wizard(t, { failStarts = 0, startGate, verificationGate, hosted =
         await verificationGate;
       }
       if (calls.writes > 0 && failVerify) throw new Error('Final read failed');
-      const bytes = await super.read(memory, address, length, report, ...rest);
+      const bytes = this.migrationImages ? this.migrationImages[memory].slice(address, address + length) : await super.read(memory, address, length, report, ...rest);
+      if (this.migrationImages) report({ activity: 'read', memory, start: address, length, done: length, total: length });
       if (prepared && memory === 'program' && address <= 0xe8000 && address + bytes.length >= 0x100000) bytes.set(syntheticCodec(), 0xe8000 - address);
       return bytes;
     }
@@ -135,6 +139,13 @@ async function wizard(t, { failStarts = 0, startGate, verificationGate, hosted =
       const checked = [];
       for (const sector of plan) checked.push({ ...sector, memory: 'program', before: await super.read('program', sector.address, sector.data.length) });
       return super.applyPlan(checked, async value => { await progress?.(value); calls.progress.push({ ...value }); onProgress?.(value); });
+    }
+    async writeMigration(plan, progress) {
+      calls.writes++;
+      for (let index = 0; index < plan.length; index++) {
+        const { memory, address, data } = plan[index]; this.migrationImages[memory].set(data, address);
+        await progress({ activity: 'write', done: index + 1, total: plan.length, memory, address });
+      }
     }
     async applyPlan(plan, progress) {
       calls.writes++;
@@ -149,7 +160,7 @@ async function wizard(t, { failStarts = 0, startGate, verificationGate, hosted =
   const file = new MemoryFile('my-radio-backup.zip');
   const sandbox = {
     Installer, radioRegions, BrowserSerial, Monitor, Journal, MONITOR_SHA256, sha256,
-    MAX_ARCHIVE, jsonBytes, verifyArchive, readFirmware, validateCatalog, downloadPackage, packageURL, readFactoryFirmware, buildFactoryUpdate,
+    MAX_ARCHIVE, jsonBytes, verifyArchive, readRestoreArchive, readFirmware, validateCatalog, downloadPackage, packageURL, readFactoryFirmware, buildFactoryUpdate,
     document: { getElementById: get, createElement: tag => new Element(tag),
       createRange: () => ({ selectNodeContents(element) { calls.selected = element.textContent; } }) },
     location: { href: (hosted ? 'https://kd8zmm.com/open25-dm32/v3/firmware.html' : 'http://localhost/v3/firmware.html') + hash, hash, origin: hosted ? 'https://kd8zmm.com' : 'http://localhost', assign() {} },
@@ -259,7 +270,7 @@ test('only the power-on timeout adds bounded connection context to the existing 
       serialNumber: 'private-cable-id', rawBytes: 'private radio data' } });
   await ui.mode('info'); await ui.click('connect');
   const event = ui.calls.diagnostics.find(event => event.workflow === 'connect' && event.event === 'operation_failed');
-  assert.equal(event.appVersion, '2026-11-17-flasher-v3-6');
+  assert.equal(event.appVersion, '2026-11-20-flasher-v3-schema-migration-1');
   assert.equal(event.error.code, 'rom_no_handshake');
   assert.match(event.error.message, /USB 067b:2303 RX=9999999 TX=9999999 W=9999999:9999999 E=9999999:BufferOverrunError maxW=9999999ms/);
   assert.match(event.error.message, /Restart radio and retry\.$/);
@@ -395,7 +406,7 @@ test('hosted direct-write outcomes identify checksum verification without claimi
   const event = ui.calls.diagnostics.find(event => event.workflow === 'update' && event.event === 'operation_succeeded');
   assert(event); assert.equal(event.verificationMethod, 'sector-crc32');
   assert.equal(event.readbackVerified, false); assert.equal(event.verificationSkipped, false);
-  assert.equal(event.appVersion, '2026-11-17-flasher-v3-6');
+  assert.equal(event.appVersion, '2026-11-20-flasher-v3-schema-migration-1');
 });
 
 test('write failure diagnostics preserve received support ID and sanitize private file details', async t => {
@@ -407,7 +418,7 @@ test('write failure diagnostics preserve received support ID and sanitize privat
   assert.doesNotMatch(event.error.message, /owner-radio|private\.example|0123456789abcdef/);
   await ui.elementClick('copy-support-id');
   assert(ui.calls.copied[0].includes(event.operationId));
-  assert(ui.calls.copied[0].includes('flasher-v3-6'));
+  assert(ui.calls.copied[0].includes('flasher-v3-schema-migration-1'));
 });
 
 test('restart failure preserves completed checksum result and reports manual power cycle', async t => {
@@ -648,4 +659,39 @@ test('update codec failures report header and fingerprint without any extra radi
   assert.equal(ui.calls.writes, 0);
   const safe = ui.evaluate("diagnosticError({code:'codec_slot_header',message:'No codec',codec:{nativeMatch:'not-searched',rawBytes:'PRIVATE_CODEC'}})");
   assert.equal(safe.codec, undefined); assert.equal(safe.code, 'codec_slot_header');
+});
+
+
+async function migrationWizard(t, options = {}) {
+  const source = await readFirmware(new Uint8Array(await readFile(new URL('../../releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip', import.meta.url))));
+  const program = new Uint8Array(DM32_CODEC.end).fill(255); program.fill(0x51, 0, APP_START);
+  program.set(source.application, APP_START); program.set(syntheticCodec(), DM32_CODEC.start);
+  const data = legacyProgrammingFixture();
+  const ui = await wizard(t, { ...options, programmingSnapshot: { program, data } });
+  const files = new Map([['application.bin', application], ['firmware.json', jsonBytes({ format: 'open25-dm32-firmware', version: 2,
+    target: 'dm32-048', release: 'schema-ui-test', applicationSha256: await sha256(application), programming: { schema: NATIVE_SCHEMA } })]]);
+  await ui.mode('update'); await ui.upload(zip(files)); await ui.click('connect'); return ui;
+}
+test('migration review shows the actual conversion and Save As stays in the install click before writes', async t => {
+  const ui = await migrationWizard(t);
+  assert.match(ui.html(), /Convert 1 P25 channel, create 1 contact and reuse 0 contacts/);
+  assert.match(ui.html(), /saved|recovery ZIP/); assert.equal(ui.calls.writes, 0); assert.equal(ui.calls.saves, 0);
+  const before = ui.calls.reads.length; await ui.click('flash');
+  assert.equal(ui.calls.readsBeforeSave, before); assert.equal(ui.calls.saves, 1); assert.equal(ui.calls.writes, 1);
+  assert.equal(ui.calls.confirms.length, 0); assert.match(ui.html(), /Flash complete/);
+  assert.equal((await verifyMigrationArchive(ui.file.bytes)).manifest.summary.channelsConverted, 1);
+});
+test('cancelling migration recovery Save As leaves firmware and programming untouched', async t => {
+  const ui = await migrationWizard(t, { saveError: new DOMException('Cancelled', 'AbortError') });
+  await ui.click('flash'); assert.equal(ui.calls.writes, 0); assert.equal(ui.calls.saves, 1); assert.match(ui.html(), /Ready to update/);
+});
+
+
+test('hosted migration reports scoped proof and keeps raw programming and recovery images private', async t => {
+  const ui = await migrationWizard(t, { hosted: true, physical: true }); await ui.click('flash');
+  const succeeded = ui.calls.diagnostics.find(value => value.workflow === 'update' && value.event === 'operation_succeeded');
+  assert.equal(succeeded.verificationMethod, 'sector-readback'); assert.equal(succeeded.sectorReadbackVerified, true);
+  assert.equal(succeeded.readbackVerified, false); assert.equal(succeeded.verificationSkipped, false);
+  assert(!JSON.stringify(ui.calls.diagnostics).includes('P25 A'));
+  assert(!JSON.stringify(ui.calls.diagnostics).includes('program-before.bin'));
 });

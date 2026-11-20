@@ -35,6 +35,7 @@ export async function readFactoryFirmware(bytes, programSize = DM32_CODEC.end) {
 // This builds a local candidate file, not proof of Windows updater compatibility.
 export async function buildFactoryUpdate(firmwareZip, oemBytes) {
   const { manifest, application } = await readFirmware(firmwareZip);
+  assert(!manifest.programming, 'This update must check radio programming. Use the connected flasher instead of a Baofeng update file.');
   assert(usesDm32Codec(manifest), 'Choose an Open25-DM32 Classic or Next firmware package.');
   assert(application.length >= SECTOR, 'The firmware application is incomplete; its entry sector is missing.');
   const oem = await readFactoryFirmware(oemBytes);

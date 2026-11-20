@@ -4,8 +4,8 @@ Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.h
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
 The Classic r13 catalog uses the existing flasher version
 `2026-11-17-flasher-v3-6`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
-catalog and shared-asset hashes. The flasher protocol and flash write scopes
-are unchanged.
+catalog and shared-asset hashes. The reviewed catalog remains unchanged. Source changes for programming migration
+are separate from that deployed snapshot.
 
 The tools homepage lists Flasher v3, Classic CPS and Next CPS. Classic CPS
 supports Open25-DM32 Classic firmware R9 and newer. Retired Flasher v1/v2
@@ -19,6 +19,43 @@ Use desktop Chrome or Edge for Web
 Serial. Choose the intended operation before connecting; writing requires its
 own explicit action. A full backup and a CPS codeplug are different files.
 Preserve a full backup belonging to the same radio before changing firmware.
+
+## Programming format upgrades
+
+A firmware ZIP can declare its target programming schema in `firmware.json` as
+`"programming": {"schema": "rfkv-p25-contact-v1"}`. The flasher uses a bundled,
+versioned converter; packages cannot supply migration scripts. The initial
+registered source is the exact published Classic r13 application. The flasher
+checks its full application hash and erased padding, then validates programming
+and any pending journal before offering the update. Unknown modified firmware
+with nonblank programming is refused; similar records or version names are not
+proof of compatibility. An already installed exact target image is also admitted.
+Future native-to-native upgrades must add reviewed prior application identities to
+`PROGRAMMING_SOURCES`; publishing a new target alone does not admit every older native image.
+
+The r13 conversion preserves P25 talkgroups by reusing suitable group contacts or
+creating unused contacts, and converts the channel links. Other IDs, NACs, channel
+settings and RFKV records are preserved. Chained settings are compacted only when
+they fit the native root without dropping records. Unsupported or previously
+parked channel semantics, a full contact table, damaged records and an unfinished
+firmware journal stop the upgrade before writes.
+
+The Install screen shows the conversion counts. A conversion requires choosing
+a new recovery ZIP; the flasher saves and reopens it before writing. This private
+archive holds the original complete application and codec plus every changed data
+sector. After interruption, reconnect the same radio and choose Backup / Restore
+with that ZIP to roll back both firmware and affected programming. Recovery does
+not resume an old write automatically. Each changed sector is checked before
+erase and downloaded after writing; the application entry is written last.
+
+The recovery identity uses chip capacities, boot and calibration fingerprints,
+not a unique hardware serial number. Those fingerprints can be shared or cloned,
+so the physical-radio confirmation remains necessary. Keep the recovery file
+private and available until normal operation has been checked. Full backups and
+factory restores remain separate tools. Packages requiring a programming check
+must use the connected flasher rather than the offline Baofeng `.bin` builder.
+Firmware packages may include plain-text attribution under supported `notices/`
+paths; those entries are retained and never executed.
 
 ## Run locally
 

@@ -7,8 +7,12 @@ import { BrowserSerial } from '../lib/serial.mjs';
 import { Installer } from '../lib/engine.mjs';
 import { readFirmware } from '../lib/firmware.mjs';
 import { DM32_CODEC } from '../lib/policy.mjs';
+import { zip } from '../lib/zip.mjs';
 import { APP_START, SECTOR, concat, crc32, equal, filled, get16, get32, sha256, sum8, u16, u32 } from '../lib/bytes.mjs';
-import { MemoryJournal } from './helpers.mjs';
+import { MemoryJournal, MemoryFile } from './helpers.mjs';
+import { legacyProgrammingFixture } from './programming-fixture.mjs';
+import { NATIVE_SCHEMA } from '../lib/programming.mjs';
+import { verifyMigrationArchive } from '../lib/migration-archive.mjs';
 import { syntheticCodec } from './codec-fixture.mjs';
 
 const image = new Uint8Array(await readFile(new URL('../../assets/monitor.bin', import.meta.url)));
@@ -427,4 +431,69 @@ test('actual Installer preserves earned Monitor CRC results across reset loss wi
   assert.equal(complete.state, 'complete'); assert.equal(complete.verificationMethod, 'sector-crc32');
   assert.equal(complete.resetSent, false); assert.equal(journal.records.at(-1).state, 'complete');
   assert.equal(writeFrames(wire).length, writes); assert.equal(wire.frames.length, frames);
+});
+
+test('programming migrations check preimages and readback, constrain data ranges, and publish entry last', async t => {
+  const { clock, wire, monitor } = await setup(t);
+  const plan = [
+    { memory: 'program', address: APP_START, before: wire.images.program.slice(APP_START, APP_START + SECTOR), data: filled(SECTOR, 0x71) },
+    { memory: 'data', address: 0x70e000, before: wire.images.data.slice(0x70e000, 0x70f000), data: filled(SECTOR, 0x29) },
+  ];
+  await monitor.writeMigration(plan);
+  assert.deepEqual(writeFrames(wire).map(frame => [frame[6] === 4 ? 'program' : 'data', get32(frame, 12)]), [['data', 0x70e000], ['program', APP_START]]);
+  assert(wire.frames.some(frame => frame[1] === 9), 'Migrated sectors require host readback.');
+  await assert.rejects(monitor.restartVerified({ verificationMethod: 'sector-crc32' }));
+  await clock.run(monitor.restartVerified({ verificationMethod: 'sector-readback' }));
+  assert(resetFrames(wire).length > 0);
+});
+test('migration refuses every sector before writing when a later preimage changed', async t => {
+  const { wire, monitor } = await setup(t);
+  const plan = [0x70e000, 0x7a7000].map(address => ({ memory: 'data', address,
+    before: wire.images.data.slice(address, address + SECTOR), data: filled(SECTOR, 8) }));
+  wire.images.data[0x7a7000] ^= 1;
+  await assert.rejects(monitor.writeMigration(plan), /changed after migration preflight/);
+  assert.equal(writeFrames(wire).length, 0);
+  await assert.rejects(monitor.restartVerified({ verificationMethod: 'sector-readback' }));
+});
+test('migration cannot write calibration, bootloader, firmware journal, or unknown data sectors', async t => {
+  const { wire, monitor } = await setup(t);
+  for (const [memory, address] of [['program', 0], ['data', 0x710000], ['data', 0x719000], ['data', 0x1000]]) {
+    await assert.rejects(monitor.writeMigration([{ memory, address,
+      before: wire.images[memory].slice(address, address + SECTOR), data: filled(SECTOR, 8) }]), /outside the bundled programming layout/);
+  }
+  assert.equal(writeFrames(wire).length, 0);
+});
+test('lost migration acknowledgement never retries a sector or earns restart proof', async t => {
+  const { wire, monitor } = await setup(t);
+  wire.loseACKAt = 1;
+  await assert.rejects(monitor.writeMigration([{ memory: 'data', address: 0x70e000,
+    before: wire.images.data.slice(0x70e000, 0x70f000), data: filled(SECTOR, 8) }]));
+  assert.equal(writeFrames(wire).length, 1);
+  await assert.rejects(monitor.restartVerified({ verificationMethod: 'sector-readback' }));
+  assert.equal(resetFrames(wire).length, 0);
+});
+
+
+test('actual Installer and Monitor migrate a pinned r13 source using the saved recovery image and sector readback', async t => {
+  const { clock, wire, monitor } = await setup(t);
+  const source = await readFirmware(publicClassicZip);
+  wire.images.program.fill(255, APP_START, DM32_CODEC.start); wire.images.program.set(source.application, APP_START);
+  wire.images.program.set(syntheticCodec(), DM32_CODEC.start); wire.images.data = legacyProgrammingFixture();
+  const original = { program: wire.images.program.slice(), data: wire.images.data.slice() };
+  const application = filled(8193, 0x29);
+  const bytes = zip(new Map([['firmware.json', new TextEncoder().encode(JSON.stringify({
+    format: 'open25-dm32-firmware', version: 2, target: 'dm32-048', release: 'migration-wire-test',
+    applicationSha256: await sha256(application), codecTablesEnd: DM32_CODEC.tablesHi,
+    programming: { schema: NATIVE_SCHEMA } }))], ['application.bin', application]]));
+  const engine = new Installer({ journal: new MemoryJournal() }); await engine.attach(monitor); await engine.selectFirmware(bytes);
+  const file = new MemoryFile(), result = await clock.run(engine.install({ firstInstall: false, recoveryHandle: file }));
+  const recovery = await verifyMigrationArchive(file.bytes);
+  assert(equal(recovery.program, original.program.subarray(APP_START)));
+  assert.equal(result.verificationMethod, 'sector-readback'); assert.equal(result.sectorReadbackVerified, true);
+  assert.equal(result.resetSent, true); assert.equal(monitor.failed, false);
+  const writes = writeFrames(wire); assert(writes.some(frame => frame[6] !== 4));
+  assert.equal(get32(writes.at(-1), 12), APP_START);
+  assert(equal(wire.images.program.subarray(0, APP_START), original.program.subarray(0, APP_START)));
+  assert(equal(wire.images.data.subarray(0x710000, 0x711000), original.data.subarray(0x710000, 0x711000)));
+  assert.equal((await engine.completeWrite(result)).state, 'complete');
 });

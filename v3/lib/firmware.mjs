@@ -2,16 +2,32 @@
 import { APP_START, assert, sha256 } from './bytes.mjs';
 import { MAX_ARCHIVE, readJSON, unzip } from './zip.mjs';
 import { DM32_CODEC, usesDm32Codec } from './policy.mjs';
+import { NATIVE_SCHEMA } from './programming.mjs';
 
 export async function readFirmware(bytes) {
   const files = unzip(bytes), application = files.get('application.bin');
-  assert(files.size === 2 && application && files.has('firmware.json'), 'The ZIP must contain only firmware.json and application.bin.');
+  const noticePath = /^notices\/(?:LICENSE|AUTHORS|CONTRIBUTORS|LICENSES\/[a-zA-Z0-9][a-zA-Z0-9._-]*\.txt|platform\/hrc7000\/THIRD_PARTY|core\/mbe\/THIRD_PARTY|third_party\/FreeRTOS-Kernel\/LICENSE\.md|fonts\/(?:spleen_5x8|jbmono_6x12)\.inc\.txt)$/;
+  assert(application && files.has('firmware.json') && [...files.keys()].every(name =>
+    ['firmware.json', 'application.bin'].includes(name) || noticePath.test(name)),
+    'The ZIP must contain firmware.json and application.bin, with only supported attribution files under notices/.');
+  let noticeBytes = 0;
+  for (const [name, bytes] of files) if (noticePath.test(name)) {
+    noticeBytes += bytes.length;
+    assert(bytes.length <= 128 * 1024 && noticeBytes <= 1024 * 1024, 'Firmware attribution files are too large.');
+    let text;
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch { throw new Error('Firmware attribution files must be UTF-8 text.'); }
+    assert(!/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text), 'Firmware attribution files must be plain text.');
+  }
   const manifest = readJSON(files, 'firmware.json');
-  assert(manifest && ['format', 'version', 'target', 'release', 'applicationSha256'].every(key => Object.hasOwn(manifest, key)) && Object.keys(manifest).every(key => ['format', 'version', 'target', 'release', 'applicationSha256', 'codecTablesEnd'].includes(key)) &&
+  assert(manifest && ['format', 'version', 'target', 'release', 'applicationSha256'].every(key => Object.hasOwn(manifest, key)) && Object.keys(manifest).every(key => ['format', 'version', 'target', 'release', 'applicationSha256', 'codecTablesEnd', 'programming'].includes(key)) &&
     manifest.format === 'open25-dm32-firmware' && manifest.version === 2,
     'Choose a version 2 firmware ZIP. Older package formats are not supported.');
   assert(typeof manifest.release === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(manifest.release), 'Invalid firmware version.');
   assert(manifest.codecTablesEnd === undefined || usesDm32Codec(manifest) && [0x18003e28, 0x18003e38].includes(manifest.codecTablesEnd), 'Unsupported firmware codec memory limit.');
+  assert(manifest.programming === undefined || usesDm32Codec(manifest) && manifest.programming &&
+    Object.keys(manifest.programming).length === 1 && manifest.programming.schema === NATIVE_SCHEMA,
+    'Unsupported programming schema. Update the flasher before installing this package.');
   assert(application.length > 0, 'Empty application image.');
   assert(manifest.applicationSha256 === await sha256(application), 'Application SHA-256 does not match the manifest.');
   assert(!usesDm32Codec(manifest) || APP_START + application.length <= DM32_CODEC.start,

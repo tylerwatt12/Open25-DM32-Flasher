@@ -258,3 +258,21 @@ test('codec failure details are preserved, bounded and optional for older client
   assert.equal((await f.send(notCodec)).status, 400);
   assert.equal((await f.rows()).length, 2);
 });
+
+
+test('migration diagnostics report scoped sector readback without claiming two complete chips', { skip: !phpAvailable }, async t => {
+  const f = await fixture(t);
+  for (const workflow of ['first_install', 'update', 'restore'])
+    assert.equal((await f.send(event({ workflow, phase: 'complete', verificationMethod: 'sector-readback',
+      sectorReadbackVerified: true, readbackVerified: false, verificationSkipped: false }))).status, 204);
+  for (const extra of [
+    { sectorReadbackVerified: false }, { readbackVerified: true }, { verificationSkipped: true },
+    { workflow: 'info' }, { workflow: 'revert' }, { verificationMethod: 'sector-crc32' },
+  ]) assert.equal((await f.send(event({ workflow: 'update', verificationMethod: 'sector-readback',
+    sectorReadbackVerified: true, readbackVerified: false, verificationSkipped: false, ...extra }))).status, 400);
+  assert.equal((await f.send(event({ event: 'operation_failed', workflow: 'update', verificationMethod: 'sector-readback',
+    sectorReadbackVerified: false, readbackVerified: false, verificationSkipped: false,
+    error: { name: 'NetworkError', message: 'Disconnected' } }))).status, 204);
+  const rows = await f.rows(); assert.equal(rows.length, 4);
+  assert(rows.slice(0, 3).every(row => row.sectorReadbackVerified === true && row.readbackVerified === false));
+});

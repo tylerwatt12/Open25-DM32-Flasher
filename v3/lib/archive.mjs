@@ -68,7 +68,7 @@ export async function verifyArchive(bytes) {
   return { manifest: m, images, sha256: await sha256(bytes) };
 }
 
-export async function saveAndVerify(capture, handle) {
+export async function saveAndVerify(capture, handle, verifier = verifyArchive) {
   assert(handle?.createWritable && handle?.getFile, 'A disk save destination is required.');
   assert((await handle.getFile()).size === 0, 'Choose a new filename. An existing backup or other file will not be overwritten.');
   let writable;
@@ -78,6 +78,6 @@ export async function saveAndVerify(capture, handle) {
   } catch (error) { try { await writable?.abort(); } catch { /* preserve original error */ } throw error; }
   const saved = new Uint8Array(await (await handle.getFile()).arrayBuffer());
   assert(await sha256(saved) === await sha256(capture.bytes), 'The file saved on disk differs from the captured archive.');
-  const verified = await verifyArchive(saved);
+  const verified = await verifier(saved);
   return { ...verified, filename: handle.name || 'radio-backup.zip', handle };
 }

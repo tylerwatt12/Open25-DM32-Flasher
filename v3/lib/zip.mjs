@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Deliberately small ZIP subset: stored entries, no encryption, ZIP64 or paths.
+// Deliberately small ZIP subset: stored entries, no encryption or ZIP64.
+// Attribution names are retained in memory; archives are never extracted to disk.
 import { assert, concat, crc32, decoder, encoder, get16, get32 } from './bytes.mjs';
 export const MAX_ARCHIVE = 48 * 1024 * 1024;
-const safeName = name => /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$/.test(name);
+const component = name => /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$/.test(name);
+const safeName = name => component(name) || name.startsWith('notices/') && name.length <= 192 && name.split('/').every(component);
 function header(length) { const bytes = new Uint8Array(length); return [bytes, new DataView(bytes.buffer)]; }
 export function zip(entries) {
   assert(entries instanceof Map && entries.size > 0 && entries.size <= 128, 'Invalid archive entries.');

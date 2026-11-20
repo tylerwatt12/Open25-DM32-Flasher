@@ -6,7 +6,7 @@ import { Monitor } from './lib/monitor.mjs';
 import { Journal } from './lib/journal.mjs';
 import { MONITOR_SHA256 } from './lib/policy.mjs';
 import { MAX_ARCHIVE, jsonBytes } from './lib/zip.mjs';
-import { verifyArchive } from './lib/archive.mjs';
+import { readRestoreArchive } from './lib/migration-archive.mjs';
 import { readFirmware, validateCatalog, downloadPackage, packageURL } from './lib/firmware.mjs';
 import { sha256 } from './lib/bytes.mjs';
 
@@ -27,7 +27,7 @@ const randomId = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 const pageId = randomId();
-const APP_VERSION = '2026-11-17-flasher-v3-6';
+const APP_VERSION = '2026-11-20-flasher-v3-schema-migration-1';
 // Bump this key if the regulatory notice changes and needs fresh acceptance.
 const usageAcceptanceKey = 'open25-dm32-v3-regulatory-v1';
 let diagnosticHardware, diagnosticAttempt;
@@ -200,7 +200,7 @@ function progress(p) {
   const headings = {
     archive: 'Checking your backup', identify: mode === 'info' ? 'Reading radio information' : 'Checking your radio',
     backup: 'Backing up your radio', save: 'Saving your backup',
-    preflight: mode === 'first' ? 'Preparing the voice codec' : 'Checking the voice codec',
+    preflight: firmwareSelection?.manifest.programming ? 'Checking firmware and programming' : mode === 'first' ? 'Preparing the voice codec' : 'Checking the voice codec',
     install: mode === 'factory' ? 'Writing Baofeng firmware' : mode === 'update' ? 'Updating firmware' : 'Installing firmware',
     restore: 'Restoring your backup', verify: 'Checking the restored backup', restart: 'Restarting your radio', complete: 'Finishing…',
   };
@@ -346,18 +346,18 @@ function render() {
   else if (busy) html = '<h2 id="work-heading">Working…</h2>';
   else if (receipt) {
     const skipped = receipt.verificationSkipped;
-    html = `<h2>${receipt.operation === 'restore' ? skipped ? 'Backup restored · final check skipped' : 'Backup restored and checked' : mode === 'factory' ? 'Baofeng firmware written and checked' : 'Flash complete!'}</h2><p class="description">${receipt.operation !== 'restore' && mode !== 'factory' ? 'Your new firmware is installed. Enjoy your radio!' : `${skipped ? 'Only the written sections were checked. ' : ''}Check that your radio starts normally.`}</p>${receipt.restartError ? '<p class="change-note" role="status">Automatic restart was not confirmed. Turn the radio off, then on.</p>' : ''}<div class="actions">${completedFirmware?.target === 'dm32-048' ? '<a class="button secondary" href="../classic-cps/">Open Classic CPS</a>' : ''}${button('finish', 'Back to tools')}</div>`;
+    html = `<h2>${receipt.operation === 'recovery' ? 'Original firmware and programming restored' : receipt.operation === 'restore' ? skipped ? 'Backup restored · final check skipped' : 'Backup restored and checked' : mode === 'factory' ? 'Baofeng firmware written and checked' : 'Flash complete!'}</h2><p class="description">${!['restore', 'recovery'].includes(receipt.operation) && mode !== 'factory' ? 'Your new firmware is installed. Enjoy your radio!' : `${skipped ? 'Only the written sections were checked. ' : ''}Check that your radio starts normally.`}</p>${receipt.restartError ? '<p class="change-note" role="status">Automatic restart was not confirmed. Turn the radio off, then on.</p>' : ''}<div class="actions">${completedFirmware?.target === 'dm32-048' ? '<a class="button secondary" href="../classic-cps/">Open Classic CPS</a>' : ''}${button('finish', 'Back to tools')}</div>`;
   } else if (isFirmware() && (!firmwareSelection || choosingPackage)) html = firmwarePicker();
   else if (mode === 'package') html = localUpdate
     ? `<h2>Update file created</h2><p class="file-meta">Voice codec from ${escape(stockSelection.filename)}</p><div class="actions">${button('package-download', 'Download update .bin')}</div>${baofengGuide()}`
     : `<h2>Choose Baofeng firmware</h2><p class="description">Unzip the Baofeng download, then choose its .bin file for the voice codec. The file stays on your computer.</p><div class="actions"><a class="button secondary" href="${baofengFirmwareURL}" target="_blank" rel="noopener noreferrer">Download Baofeng firmware <span aria-hidden="true">↗</span></a>${button('package-oem', 'Choose OEM file…')}</div>`;
   else if (mode === 'archive' && !archiveAction) html = `<h2>Backup / Restore</h2><p class="description">Save a complete copy of this radio, or restore one you saved earlier.</p><div class="actions">${button('choose-backup', 'Back up this radio')}${button('choose-restore', 'Restore a backup')}</div>`;
   else if (mode === 'factory' && !factorySelection) html = `<h2>Choose Baofeng firmware</h2><p class="description">Restore original Baofeng firmware for this radio. Download a zip, and provide a .bin firmware file below</p><div class="actions"><a class="button secondary" href="${baofengFirmwareURL}" target="_blank" rel="noopener noreferrer">Download Baofeng firmware <span aria-hidden="true">↗</span></a>${button('factory-file', 'Choose Baofeng file…')}</div>`;
-  else if (workflow() === 'restore' && !restoreArchive) html = `<h2>Choose a backup</h2><p class="description">Use a full backup made from this radio. Restoring it replaces firmware, settings and factory calibration.</p><div class="actions">${button('restore-file', 'Choose backup ZIP…')}</div>`;
+  else if (workflow() === 'restore' && !restoreArchive) html = `<h2>Choose a backup</h2><p class="description">Choose a full backup or migration recovery ZIP made from this radio. A full backup also restores factory calibration; a migration recovery ZIP restores the original firmware and only the programming changed by that update.</p><div class="actions">${button('restore-file', 'Choose backup ZIP…')}</div>`;
   else if (!state.connected) html = connectScreen();
-  else if (isFirmware()) html = `<h2>${mode === 'first' ? 'Ready to install' : 'Ready to update'}</h2><p class="description">Install the selected firmware. A full backup is optional.</p>${firmwareSelection?.manifest.target === 'dm32-operator' ? '<p class="change-note">Next may replace stored radio programming when it starts.</p>' : firmwareSource === 'classic' ? '<p class="change-note">This release uses the new Classic CPS. Retired Classic formats are not imported; existing RFKV programming is preserved.</p>' : ''}<div class="actions">${button('flash', mode === 'first' ? 'Install firmware' : 'Update firmware')}</div>`;
+  else if (isFirmware()) html = `<h2>${mode === 'first' ? 'Ready to install' : 'Ready to update'}</h2><p class="description">Install the selected firmware. A full backup is optional.</p>${state.programming ? programmingReview() : firmwareSelection?.manifest.target === 'dm32-operator' ? '<p class="change-note">Next may replace stored radio programming when it starts.</p>' : firmwareSource === 'classic' ? '<p class="change-note">This release uses the new Classic CPS. Retired Classic formats are not imported; existing RFKV programming is preserved.</p>' : ''}<div class="actions">${button('flash', mode === 'first' ? 'Install firmware' : 'Update firmware')}</div>`;
   else if (workflow() === 'backup') html = `<h2>${state.backup ? 'Backup saved and checked' : 'Back up your radio'}</h2><p class="description">${state.backup ? 'Keep this file private; it may contain programming and keys.' : 'Save a complete copy of this radio. This may take several minutes.'}</p><div class="actions">${state.backup ? button('finish', 'Back to tools') : button('backup', 'Save backup…')}</div>`;
-  else if (workflow() === 'restore') html = `<h2>Ready to restore</h2><p class="description">This replaces firmware, settings, the bootloader and factory calibration with the backup.</p><label class="check"><input id="same-radio" type="checkbox" ${sameRadio ? 'checked' : ''}><span>This backup belongs to this physical radio.</span></label><div class="actions">${button('restore-write', 'Restore backup', !sameRadio)}${link('restore-file', 'Choose another backup…')}</div>`;
+  else if (workflow() === 'restore') html = `<h2>Ready to restore</h2><p class="description">${restoreArchive.manifest.format === 'open25-dm32-migration-recovery' ? 'This restores the original firmware and the programming sectors changed by the update. Bootloader and calibration are preserved. The fingerprints are not a unique serial number; confirm this is the same physical radio.' : 'This replaces firmware, settings, the bootloader and factory calibration with the backup.'}</p><label class="check"><input id="same-radio" type="checkbox" ${sameRadio ? 'checked' : ''}><span>This backup belongs to this physical radio.</span></label><div class="actions">${button('restore-write', 'Restore backup', !sameRadio)}${link('restore-file', 'Choose another backup…')}</div>`;
   else if (mode === 'factory') html = `<h2>Ready to revert to Baofeng</h2><p class="description">Reinstall Baofeng firmware. This cannot recover erased settings or calibration.</p><p class="change-note">Use an original file for this radio. The file format was checked; compatibility and completeness are not verified.</p><div class="actions">${button('revert', 'Revert to Baofeng')}${link('factory-file', 'Choose another file…')}</div>`;
   else if (mode === 'info') html = infoView();
   screen.innerHTML = html || home();
@@ -389,6 +389,7 @@ async function run(work, { cancellable = false, workflow: action } = {}) {
     if (attempt) sendDiagnostic(result === false ? 'operation_cancelled' : 'operation_succeeded', attempt, isWrite(action) && result !== false ? {
       phase: 'complete', readbackVerified: receipt?.readbackVerified === true, verificationSkipped: receipt?.verificationSkipped === true,
       verificationMethod: receipt?.verificationMethod || (receipt?.verificationSkipped ? 'skipped' : 'full-byte-readback'),
+      ...(receipt?.verificationMethod === 'sector-readback' ? { sectorReadbackVerified: receipt.sectorReadbackVerified === true } : {}),
       resetSent: receipt?.resetSent === true, ...(receipt?.restartError ? { restartError: diagnosticError(receipt.restartError) } : {}),
     } : {});
   } catch (error) {
@@ -397,7 +398,7 @@ async function run(work, { cancellable = false, workflow: action } = {}) {
     const last = isWrite(action) ? await journal.latest().catch(() => undefined) : undefined;
     const current = last && Date.parse(last.startedAt) >= attempt.startedAt ? last : undefined;
     if (attempt) attempt.delivery = sendDiagnostic(error?.name === 'AbortError' ? 'operation_cancelled' : 'operation_failed', attempt, error?.name === 'AbortError' ? {} : {
-      error: diagnosticError(error), ...(current ? { readbackVerified: current.readbackVerified === true, verificationSkipped: current.verificationSkipped === true, ...(current.verificationMethod ? { verificationMethod: current.verificationMethod } : {}), resetSent: current.resetSent === true } : {}),
+      error: diagnosticError(error), ...(current ? { readbackVerified: current.readbackVerified === true, verificationSkipped: current.verificationSkipped === true, ...(current.verificationMethod ? { verificationMethod: current.verificationMethod } : {}), ...(current.verificationMethod === 'sector-readback' ? { sectorReadbackVerified: current.sectorReadbackVerified === true } : {}), resetSent: current.resetSent === true } : {}),
     });
     report(error, attempt);
     if (radio?.failed || transport && !engine.state.connected) await closeRadio({ keepActivity: true });
@@ -469,16 +470,25 @@ async function fileBytes(file) {
 }
 async function selectFirmware(bytes, filename) {
   const { manifest } = await readFirmware(bytes), digest = await sha256(bytes);
+  if (mode === 'package' && manifest.programming) throw new Error('This update must check radio programming. Choose Update firmware and connect the radio to install it.');
   if (engine.state.connected) await engine.selectFirmware(bytes);
   firmwareSelection = { bytes, filename, manifest, sha256: digest, source: firmwareSource };
   if (mode === 'package') { localUpdate = stockSelection = undefined; }
   choosingPackage = false; receipt = undefined; log('Firmware ZIP checked.');
 }
+function programmingReview() {
+  const programming = engine.state.programming;
+  if (!programming) return '';
+  const summary = programming.summary || {};
+  const count = (value, noun) => `${escape(value || 0)} ${noun}${value === 1 ? '' : 's'}`;
+  if (!programming.changed) return '<p class="change-note">Your programming already uses a compatible format. It will be preserved.</p>';
+  return `<section class="change-note"><h3>Programming update</h3><p>Convert ${count(summary.channelsConverted, 'P25 channel')}, create ${count(summary.contactsCreated, 'contact')} and reuse ${count(summary.contactsReused, 'contact')}. ${summary.rfkvPages > 1 ? `Combine ${escape(summary.rfkvPages)} settings pages without removing records. ` : ''} Your channel talkgroups and settings will be preserved.</p><p>When you install, choose where to save the recovery ZIP. The flasher will save and reopen it before writing. Keep it until you have checked the radio. If the cable or power is interrupted, use Backup / Restore with this ZIP on the same radio to restore its original firmware and affected programming.</p></section>`;
+}
 async function finishWrite(result) {
   const complete = await engine.completeWrite(result);
   completedFirmware = isFirmware() ? firmwareSelection?.manifest : undefined;
   await closeRadio({ keepActivity: true }); receipt = complete;
-  log(receipt.verificationMethod === 'sector-crc32' ? 'Written sectors passed radio-side flash checksums. Check normal startup.' : receipt.verificationSkipped ? 'Complete-image verification was skipped. Check normal startup.' : 'Both complete chips match the backup. Check normal startup.');
+  log(receipt.verificationMethod === 'sector-readback' ? 'Written firmware and programming sectors passed readback. Check normal startup.' : receipt.verificationMethod === 'sector-crc32' ? 'Written sectors passed radio-side flash checksums. Check normal startup.' : receipt.verificationSkipped ? 'Complete-image verification was skipped. Check normal startup.' : 'Both complete chips match the backup. Check normal startup.');
   if (receipt.restartError) log(`Restart was not confirmed: ${receipt.restartError.message}`);
 }
 function downloadFile(bytes, filename, type) {
@@ -546,13 +556,25 @@ $('work-card').addEventListener('click', async event => {
     selectFile('.zip', async file => {
       sameRadio = false; restoreArchive = restoreBytes = undefined;
       progress({ phase: 'archive', message: 'Checking backup ZIP' });
-      const bytes = await fileBytes(file), archive = await verifyArchive(bytes);
+      const bytes = await fileBytes(file), archive = await readRestoreArchive(bytes);
       if (archive.manifest.simulated) throw new Error('Simulation archives cannot restore a physical radio.');
       restoreArchive = { ...archive, filename: file.name }; restoreBytes = bytes;
     }); return;
   }
   if (action === 'backup') { try { await backUpRadio(); } catch (error) { report(error, outsideDiagnosticError('backup', error)); } return; }
-  if (action === 'flash') { await run(async () => finishWrite(await engine.install({ firstInstall: mode === 'first' })), { workflow: workflow() }); return; }
+  if (action === 'flash') {
+    try {
+      let recoveryHandle;
+      if (engine.state.programming?.changed) {
+        if (!window.showSaveFilePicker) throw new Error('This update needs a saved recovery ZIP. Use Chrome or Edge with file saving available.');
+        // Ask inside the original click gesture, before asynchronous radio work.
+        recoveryHandle = await window.showSaveFilePicker({ suggestedName: `Radio-migration-recovery-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`,
+          types: [{ description: 'DM32 migration recovery', accept: { 'application/zip': ['.zip'] } }] });
+      }
+      await run(async () => finishWrite(await engine.install({ firstInstall: mode === 'first', recoveryHandle })), { workflow: workflow() });
+    } catch (error) { if (error?.name !== 'AbortError') report(error, outsideDiagnosticError('install', error)); }
+    return;
+  }
   if (action === 'restore-write') { await run(async () => finishWrite(await engine.restore(restoreBytes, sameRadio, restoreArchive.filename)), { workflow: 'restore' }); return; }
   if (action === 'revert') { await run(async () => finishWrite(await engine.revertFactory(factorySelection.bytes)), { workflow: 'revert' }); return; }
   if (action === 'inspect') { await run(async () => { info = await engine.inspect(operationAbort?.signal); }, { cancellable: true, workflow: 'info' }); return; }

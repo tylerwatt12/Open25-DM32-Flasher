@@ -96,7 +96,7 @@ function report_error(mixed $value): bool
 function report_diagnostic(mixed $value): bool
 {
     if (!report_keys($value, ['version', 'pageId', 'event', 'workflow'],
-            ['operationId', 'phase', 'appVersion', 'firmware', 'hardware', 'readbackVerified', 'verificationSkipped', 'verificationMethod', 'resetSent', 'restartError', 'error']) ||
+            ['operationId', 'phase', 'appVersion', 'firmware', 'hardware', 'readbackVerified', 'verificationSkipped', 'verificationMethod', 'sectorReadbackVerified', 'resetSent', 'restartError', 'error']) ||
         $value['version'] !== 2 || !report_uuid($value['pageId']) ||
         !in_array($value['event'], ['page_view', 'hardware', 'operation_started', 'operation_succeeded',
             'operation_failed', 'operation_cancelled', 'verification_skipped'], true) ||
@@ -117,26 +117,32 @@ function report_diagnostic(mixed $value): bool
             !report_text($firmware['target'], 80) || !report_text($firmware['release'], 120) ||
             !report_sha256($firmware['sha256'])) return false;
     }
-    foreach (['readbackVerified', 'verificationSkipped', 'resetSent'] as $key) {
+    foreach (['readbackVerified', 'verificationSkipped', 'sectorReadbackVerified', 'resetSent'] as $key) {
         if (array_key_exists($key, $value) && !is_bool($value[$key])) return false;
     }
     if (($value['readbackVerified'] ?? false) && ($value['verificationSkipped'] ?? false)) return false;
     if (array_key_exists('verificationMethod', $value)) {
         $method = $value['verificationMethod'];
-        if (!in_array($method, ['sector-crc32', 'full-byte-readback', 'skipped'], true) ||
+        if (!in_array($method, ['sector-crc32', 'sector-readback', 'full-byte-readback', 'skipped'], true) ||
             !in_array($value['workflow'], ['install', 'restore', 'first_install', 'update', 'revert'], true)) return false;
         if ($method === 'sector-crc32' &&
             (!in_array($value['workflow'], ['first_install', 'update', 'revert'], true) ||
              ($value['readbackVerified'] ?? null) !== false || ($value['verificationSkipped'] ?? null) !== false)) return false;
+        if ($method === 'sector-readback' &&
+            (!in_array($value['workflow'], ['first_install', 'update', 'restore'], true) ||
+             ($value['readbackVerified'] ?? null) !== false || ($value['verificationSkipped'] ?? null) !== false ||
+             !isset($value['sectorReadbackVerified']) ||
+             $value['event'] === 'operation_succeeded' && $value['sectorReadbackVerified'] !== true)) return false;
         if ($method === 'full-byte-readback' &&
             (($value['readbackVerified'] ?? null) !== true || ($value['verificationSkipped'] ?? null) !== false)) return false;
         if ($method === 'skipped' &&
             (($value['readbackVerified'] ?? null) !== false || ($value['verificationSkipped'] ?? null) !== true)) return false;
     }
+    if (array_key_exists('sectorReadbackVerified', $value) && ($value['verificationMethod'] ?? null) !== 'sector-readback') return false;
     if ($value['event'] === 'operation_succeeded' && in_array($value['workflow'], ['first_install', 'update', 'revert'], true) &&
-        ($value['verificationMethod'] ?? null) !== 'sector-crc32') return false;
+        !in_array($value['verificationMethod'] ?? null, ['sector-crc32', 'sector-readback'], true)) return false;
     if ($value['event'] === 'operation_succeeded' && in_array($value['workflow'], ['install', 'restore'], true) &&
-        (!isset($value['readbackVerified'], $value['verificationSkipped']) ||
+        ($value['verificationMethod'] ?? null) !== 'sector-readback' && (!isset($value['readbackVerified'], $value['verificationSkipped']) ||
          $value['readbackVerified'] === $value['verificationSkipped'])) return false;
     if ($value['event'] === 'verification_skipped' &&
         (!in_array($value['workflow'], ['install', 'restore'], true) ||

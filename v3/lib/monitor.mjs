@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Monitor protocol and ROM entry adapted from MIT RadioFoundry; see THIRD_PARTY.md.
 import { APP_START, PAGE, SECTOR, assert, concat, crc32, equal, filled, get16, get32, hex, range, sha256, sleep, sum8, u16, u32 } from './bytes.mjs';
-import { MONITOR_SHA256 } from './policy.mjs';
+import { MONITOR_SHA256, DM32_CODEC } from './policy.mjs';
+import { PROGRAMMING_WRITE_RANGES } from './programming.mjs';
 
 export const memorySelector = memory => {
   assert(memory === 'program' || memory === 'data', 'Unknown flash chip.');
@@ -48,7 +49,7 @@ export function decodeSector(method, packed) {
 
 export class Monitor {
   #io; #configured = false; #chips; #started = false; #failed = false; #full = {}; #target; #verified = new Set(); #writing = false;
-  #writeCompleted = false; #readbackSkipped = false; #sectorCrcVerified = false;
+  #writeCompleted = false; #readbackSkipped = false; #sectorCrcVerified = false; #sectorReadbackVerified = false;
   constructor(io) { this.#io = io; }
   get simulated() { return false; }
   get failed() { return this.#failed; }
@@ -302,7 +303,7 @@ export class Monitor {
     assert(this.#configured && !this.#failed && !this.#writing, 'Monitor session is not ready.');
     // A new attempt revokes every previous completion, including bad input that
     // is rejected before the first write. Cached full images are now stale.
-    this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = false;
+    this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = this.#sectorReadbackVerified = false;
     this.#verified.clear(); this.#target = undefined; this.#full = {};
     assert(Array.isArray(plan) && plan.length > 0, 'A nonempty program sector plan is required.');
     const seen = new Set();
@@ -332,10 +333,47 @@ export class Monitor {
     } catch (error) { this.#failed = true; throw error; }
     finally { this.#writing = false; }
   }
+  // Only the bundled programming registry may supply data sectors. Each old
+  // sector is checked before any write, then checked again immediately before
+  // erase; each new sector is downloaded and compared after the helper CRC.
+  async writeMigration(plan, progress = () => {}) {
+    assert(this.#configured && !this.#failed && !this.#writing, 'Monitor session is not ready.');
+    this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = this.#sectorReadbackVerified = false;
+    this.#verified.clear(); this.#target = undefined; this.#full = {};
+    assert(Array.isArray(plan) && plan.length > 0, 'A nonempty migration sector plan is required.');
+    const seen = new Set();
+    const sectors = plan.map(({ memory, address, before, data }) => {
+      assert(Number.isSafeInteger(address) && address % SECTOR === 0 && before instanceof Uint8Array &&
+        data instanceof Uint8Array && before.length === SECTOR && data.length === SECTOR, 'Invalid migration sector.');
+      const permitted = memory === 'program' ? address >= APP_START && address + SECTOR <= DM32_CODEC.end :
+        memory === 'data' && PROGRAMMING_WRITE_RANGES.some(({ start, end }) => address >= start && address + SECTOR <= end);
+      assert(permitted, 'Migration sector is outside the bundled programming layout.');
+      range(address, SECTOR, this.#chips[memory]?.size || 0);
+      const key = `${memory}:${address}`; assert(!seen.has(key), 'Duplicate migration sector.'); seen.add(key);
+      return { memory, address, before: before.slice(), data: data.slice() };
+    });
+    const entry = sectors.findIndex(sector => sector.memory === 'program' && sector.address === APP_START);
+    if (entry !== -1) sectors.push(...sectors.splice(entry, 1));
+    this.#writing = true;
+    try {
+      for (const { memory, address, before } of sectors)
+        assert(equal(await this.read(memory, address, SECTOR), before), 'Radio changed after migration preflight. No sector was written.');
+      for (let index = 0; index < sectors.length; index++) {
+        const { memory, address, before, data } = sectors[index];
+        assert(equal(await this.read(memory, address, SECTOR), before), 'Radio changed during migration. Use the saved recovery archive.');
+        const result = await this.#request(14, concat(memorySelector(memory), u32(address), data.every(byte => byte === 255) ? new Uint8Array() : data), 6000);
+        assert(result.length === 4 && get32(result) === crc32(data), 'Migration sector CRC failed. Stopped without retry. Use the saved recovery archive.');
+        assert(equal(await this.read(memory, address, SECTOR), data), 'Migration sector readback failed. Stopped without retry. Use the saved recovery archive.');
+        await progress({ activity: 'write', done: index + 1, total: sectors.length, memory, address, length: SECTOR });
+      }
+      this.#writeCompleted = this.#sectorReadbackVerified = true;
+    } catch (error) { this.#failed = true; throw error; }
+    finally { this.#writing = false; }
+  }
   async applyPlan(plan, progress = () => {}) {
     assert(this.#configured && !this.#failed, 'Monitor session is not ready.');
     assert(!this.#writing, 'Another write is already running.');
-    this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = false; this.#verified.clear(); this.#target = undefined;
+    this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = this.#sectorReadbackVerified = false; this.#verified.clear(); this.#target = undefined;
     assert(this.#full.program && this.#full.data, 'Complete pre-write images are required.');
     const seen = new Set();
     for (const { memory, address, data, before } of plan) {
@@ -368,16 +406,17 @@ export class Monitor {
     const verified = this.#verified.has('program') && this.#verified.has('data');
     const skipped = verificationSkipped === true && this.#writeCompleted && this.#readbackSkipped;
     const sectorsVerified = verificationMethod === 'sector-crc32' && this.#writeCompleted && this.#sectorCrcVerified;
-    assert(!this.#failed && !this.#writing && (verified || skipped || sectorsVerified), 'Both complete chips must match, final verification must be explicitly skipped after completed writes, or the current program sectors must pass CRC32 checks before restart.');
+    const scopedVerified = verificationMethod === 'sector-readback' && this.#writeCompleted && this.#sectorReadbackVerified;
+    assert(!this.#failed && !this.#writing && (verified || skipped || sectorsVerified || scopedVerified), 'Both complete chips must match, final verification must be explicitly skipped after completed writes, or the current program sectors must pass CRC32 checks before restart.');
     // Restart authorization is one-use even if a reset request loses its reply.
-    this.#verified.clear(); this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = false;
+    this.#verified.clear(); this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = this.#sectorReadbackVerified = false;
     // Pinned stubtool.reset_chip sequence: crash mark, watchdog off, XIP off,
     // boot-ROM flash divider, then SoC reset. No caller-supplied register writes.
     const writes = [[0x18007ef4, 0x54464f53], [0x14010000, 0x5ada7200], [0x14010010, 0], [0x14010000, 0], [0x1100005c, 0], [0x11000030, 4]];
     for (const [address, value] of writes) await this.#request(3, concat(u32(address), u32(value, true)));
     await this.#io.write(monitorFrame(3, concat(u32(0x11000000), u32(0, true))));
     await sleep(100);
-    this.#configured = false; this.#verified.clear(); this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = false;
+    this.#configured = false; this.#verified.clear(); this.#writeCompleted = this.#readbackSkipped = this.#sectorCrcVerified = this.#sectorReadbackVerified = false;
     await sleep(2500); this.#io.discard();
   }
   async close() { this.#configured = false; await this.#io.close(); }
