@@ -118,12 +118,14 @@ derived copy independently.
 
 ## Classic r9 and newer programming
 
-Classic r9 and newer use RFKV programming with the current CPS. Older Classic
-programming is not imported; recreate it in the new Classic CPS. The flasher
-shows this before a listed Classic install and links to Classic CPS after a
-successful install. Full-radio backup, full restore and factory recovery keep
-their existing independent behavior. The flasher does not rewrite codeplug
-records as part of an application update.
+Classic r9 and newer use RFKV programming with the matching CPS. Ordinary native
+updates within the same schema preserve programming. An explicitly planned schema
+migration converts only declared programming regions after saving and reopening
+a verified recovery ZIP; see [Programming format upgrades](#programming-format-upgrades).
+Unsupported older formats require reprogramming with the matching CPS. The flasher
+shows the programming requirements before a listed Classic install and links to
+Classic CPS after a successful install. Full-radio backup, full restore and
+factory recovery keep their existing independent behavior.
 
 ## Hosted diagnostics and qualification
 
