@@ -12,8 +12,11 @@ import { syntheticCodec } from './codec-fixture.mjs';
 const catalog = JSON.parse(await readFile(new URL('../../releases/catalog.json', import.meta.url)));
 const release = catalog.channels.find(channel => channel.id === 'classic').variants[0].releases[0];
 assert(release, 'The current Classic release is required for package tests.');
-const publicZip = new Uint8Array(await readFile(new URL('../../releases/' + release.file, import.meta.url)));
-assert.equal(await sha256(publicZip), release.sha256);
+const currentZip = new Uint8Array(await readFile(new URL('../../releases/' + release.file, import.meta.url)));
+assert.equal(await sha256(currentZip), release.sha256);
+const sourcePin = JSON.parse(await readFile(new URL('../../dependencies.json', import.meta.url), 'utf8')).migration_source_firmware;
+const publicZip = new Uint8Array(await readFile(new URL('../../' + sourcePin.path, import.meta.url)));
+assert.equal(await sha256(publicZip), sourcePin.sha256);
 
 function oemFile(program) {
   const bytes = filled(0x100 + program.length - APP_START);
@@ -53,7 +56,7 @@ function assertCandidate(result, selected, expectedSlot) {
   assert.deepEqual(result.firmware, selected.manifest);
 }
 
-test('current catalog Classic release exports exact application, codec and deterministic padding without changing either input', async () => {
+test('pinned legacy r13 exports exact application, codec and deterministic padding without changing either input', async () => {
   const oem = syntheticOem(), oemHash = await sha256(oem), zipHash = await sha256(publicZip);
   const selected = await readFirmware(publicZip), result = await buildFactoryUpdate(publicZip, oem);
   assertCandidate(result, selected, syntheticCodec());
@@ -122,4 +125,8 @@ test('offline export cannot bypass a package-required programming format check',
   const files = unzip(await firmware()), manifest = readJSON(files, 'firmware.json');
   manifest.programming = { schema: 'rfkv-p25-contact-v1' }; files.set('firmware.json', jsonBytes(manifest));
   await assert.rejects(buildFactoryUpdate(zip(files), syntheticOem()), /connected flasher/);
+});
+test('current r14 catalog package requires connected programming checks instead of offline export', async () => {
+  const selected = await readFirmware(currentZip); assert.equal(selected.manifest.programming.schema, 'rfkv-p25-contact-v1');
+  await assert.rejects(buildFactoryUpdate(currentZip, syntheticOem()), /connected flasher/);
 });

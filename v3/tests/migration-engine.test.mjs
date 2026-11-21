@@ -13,7 +13,10 @@ import { jsonBytes, zip, unzip } from '../lib/zip.mjs';
 import { legacyProgrammingFixture } from './programming-fixture.mjs';
 import { syntheticCodec } from './codec-fixture.mjs';
 import { MemoryJournal, MemoryFile } from './helpers.mjs';
-const r13 = await readFirmware(new Uint8Array(await readFile(new URL('../../releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip', import.meta.url))));
+const dependencyPins = JSON.parse(await readFile(new URL('../../dependencies.json', import.meta.url), 'utf8'));
+const r13Bytes = new Uint8Array(await readFile(new URL('../../' + dependencyPins.migration_source_firmware.path, import.meta.url)));
+assert.equal(await sha256(r13Bytes), dependencyPins.migration_source_firmware.sha256);
+const r13 = await readFirmware(r13Bytes);
 const application = filled(8193, 0x27);
 async function packageBytes(programming = { schema: NATIVE_SCHEMA }) {
   return zip(new Map([['firmware.json', jsonBytes({ format: 'open25-dm32-firmware', version: 2,

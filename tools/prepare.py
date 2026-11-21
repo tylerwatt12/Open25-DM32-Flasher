@@ -20,7 +20,7 @@ def save(record,data):
     target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tests',action='store_true',help='Also retrieve the current catalog Classic test package')
+    parser.add_argument('--tests',action='store_true',help='Also retrieve current Classic and the pinned r13 migration source')
     args=parser.parse_args();monitor=LOCK['monitor']
     if (ROOT/monitor['path']).exists():checked((ROOT/monitor['path']).read_bytes(),monitor['sha256'])
     else:
@@ -33,7 +33,8 @@ def main():
         packed=values['STUB_UNIV_B64'];packed=''.join(packed) if not isinstance(packed,str) else packed
         save(monitor,zlib.decompress(base64.b64decode(packed)))
     if args.tests:
-        record=LOCK['test_firmware'];target=ROOT/record['path']
-        save(record,target.read_bytes() if target.exists() else fetch(record))
+        for key in ('test_firmware','migration_source_firmware'):
+            record=LOCK[key];target=ROOT/record['path']
+            save(record,target.read_bytes() if target.exists() else fetch(record))
     print('Verified pinned public dependencies. No radio accessed.')
 if __name__=='__main__':main()

@@ -2,13 +2,13 @@
 
 Source for the current [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html),
 supporting Open25-DM32 Classic and Next packages on supported HR_C7000 hardware.
-The Classic r13 catalog uses the existing flasher version
-`2026-11-17-flasher-v3-6`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
-catalog and shared-asset hashes. The reviewed catalog remains unchanged. Source changes for programming migration
-are separate from that deployed snapshot.
+The Classic catalog offers r14 with Flasher
+`2026-11-20-flasher-v3-r14-1`. `LIVE-SNAPSHOT.json` records the reviewed runtime,
+catalog and shared-asset hashes. This release includes the external r13-to-r14
+programming conversion; the radio does not run a legacy-format migrator.
 
-The tools homepage lists Flasher v3, Classic CPS and Next CPS. Classic CPS
-supports Open25-DM32 Classic firmware R9 and newer. Retired Flasher v1/v2
+The tools homepage lists Flasher v3, Classic CPS and Next CPS. Use the Classic
+CPS profile matched to the installed legacy or native firmware. Retired Flasher v1/v2
 choices are removed from the homepage; their former public entry URLs redirect
 to [Flasher v3](https://kd8zmm.com/open25-dm32/v3/firmware.html).
 
@@ -74,8 +74,9 @@ The generated `assets/monitor.bin` is ignored and is never a Git input.
 The helper's device-side source is absent from the pinned upstream tree; this
 is a pinned binary dependency, not a source-reproducible helper build.
 
-The reviewed release catalog is checked in as metadata. Only Classic r13 is
-selectable for Classic; earlier Classic releases are removed from the catalog.
+The reviewed release catalog is checked in as metadata. Only Classic r14 is
+selectable for Classic; earlier hosted package URLs remain available without
+returning old versions to the release picker.
 Firmware ZIPs are
 not included. For local catalog installs, obtain a chosen public ZIP from
 `https://kd8zmm.com/open25-dm32/releases/` at its catalog-relative path and verify
@@ -93,16 +94,19 @@ npm run verify
 npm run package
 ```
 
-`prepare:tests` additionally retrieves the exact public current Classic package used
-by the existing installation/protocol and update-file builder tests. Its URL
-and SHA-256 are pinned in `dependencies.json`; it stays ignored. PHP 8.1+ is
+`prepare:tests` retrieves both the current r14 catalog target and the exact public
+r13 migration source. Their separate URLs and SHA-256 hashes are pinned in
+`dependencies.json`; both ZIPs stay ignored. Legacy app-only/offline-export tests
+retain r13 coverage; r14 tests exercise declared-schema migration and refuse an
+offline export that would bypass the programming check. PHP 8.1+ is
 needed for collector tests; those tests skip when PHP is unavailable. Two
 optional OEM-fixture tests skip unless `DM32_OEM_BACKUP` names a private compatible
 backup outside this repository. Do not commit such a backup. Tests use synthetic
 radios and local temporary logs; they do not access physical serial ports.
 
 `verify` compares source and assets with the recorded live hashes, checks any
-prepared dependency hashes and verifies the derived codec metadata. `package`
+prepared dependency hashes, verifies the derived codec metadata and checks that
+every local runtime import is included in the reviewed package file list. `package`
 writes only the reviewed flasher payload under ignored `build/site/`, including
 the locally prepared monitor. It refuses to replace an existing output; pass
 `python3 tools/package.py --out <fresh-directory>` for another destination. It
@@ -118,8 +122,9 @@ derived copy independently.
 
 ## Classic r9 and newer programming
 
-Classic r9 and newer use RFKV programming with the matching CPS. Ordinary native
-updates within the same schema preserve programming. An explicitly planned schema
+Classic r9 and newer use RFKV programming with the matching CPS. Admitted native
+updates preserve programming; the flasher still verifies the source image
+identity. An explicitly planned schema
 migration converts only declared programming regions after saving and reopening
 a verified recovery ZIP; see [Programming format upgrades](#programming-format-upgrades).
 Unsupported older formats require reprogramming with the matching CPS. The flasher
@@ -140,8 +145,10 @@ operation outcomes, hardware fingerprints, bounded errors and package metadata;
 the server adds timestamp, IP and User-Agent. Raw radio bytes, codeplugs,
 calibration, keys and backups are not diagnostic uploads. Radio info is local.
 
-Direct firmware writes preserve the bootloader/data chip and check each written
-sector through the existing helper CRC response. Full restore intentionally
+Ordinary app-only firmware writes preserve the bootloader/data chip and check
+each written sector through the existing helper CRC response. Declared programming
+conversions also write their reviewed data sectors with full sector readback.
+Full restore intentionally
 replaces both main flash arrays, with the existing complete readback or explicit
 skip behavior. Software success does not establish radio startup or RF
 qualification. The update-file builder uses codec bytes from a locally supplied
@@ -178,7 +185,7 @@ unlock or a prompt on every PTT press.
 Classic r11 advertises saved conventional P25 support in the firmware VERSION
 response, restoring the P25 mode choice in Classic CPS after connecting. It
 preserves existing RFKV programming and the r10 RX-only defaults. The catalog
-retains the r11 fix in r13; previously hosted package URLs remain available.
+retained the r11 fix in r13; previously hosted package URLs remain available.
 
 ## Classic r12 speaker playback fix
 
@@ -187,7 +194,7 @@ codec and gain are preserved in r13.
 
 ## Classic r13 P25 transmit and cleanup fixes
 
-The catalog offers r13 with two Classic P25 fixes: separate the native P25
+The r13 catalog release included two Classic P25 fixes: separate the native P25
 guard from the upstream PCM refill timer, and finish hardware ownership release
 when radio-task cleanup takes longer than 500 ms. The existing speaker playback
 fix, codec/gain, RFKV programming and supported modes are preserved.
@@ -198,5 +205,48 @@ checks. Manual on-air PTT/audio qualification remains pending; the DMR-only
 endurance report is not established as resolved. PL/CTCSS can still drop during
 DTMF.
 
-This update changes release metadata only. Flasher v3 runtime and both CPS
-applications are unchanged; old hosted package URLs remain available.
+That r13 release changed metadata only. Its hosted package URL remains available
+as the pinned migration source for r14.
+
+## Classic r14 upstream refresh and upgrade paths
+
+The r14 application is built from the reviewed Classic source based on current
+RadioFoundry upstream. It supports FM, DMR, conventional P25 and NXDN, retains the
+reserved codec layout, and applies our band policy: extended reception is always
+enabled; FM/DMR/NXDN transmit within 136–174 and 400–480 MHz; P25 transmission uses
+the narrower documented service/amateur ranges. Use the matched Classic CPS for
+r14. A native r14 CPS backup and an older r13 explicit-talkgroup backup are not
+interchangeable; do not write an old backup over migrated programming.
+
+Direct admitted paths are the exact published r13 application, the exact selected
+r14 application already installed, and genuinely erased programming. The known
+r13 source is 315648 bytes with SHA-256
+`fc2ccc27576e5d002bc51ecf547bc81960fc329b51f511dcf547f4ed9dd53347`.
+The source application and FF padding are checked together. Nonblank programming
+from an unknown OEM, older Classic, other native or privately modified image is
+refused before writes. The r14 listing is not a universal first-install or
+any-version upgrade claim. Earlier releases remain at their original URLs; the
+[published r13 ZIP](https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip)
+is the available intermediate firmware for an admitted r13-to-r14 update. Check
+compatibility before using an older firmware as an intermediate; this release
+does not add converters for unsupported older codeplugs.
+
+The r13 conversion changes only the required contact, channel and RFKV sectors.
+It preserves supported talkgroups, IDs, NACs and opaque/settings records, or
+refuses the update if that cannot be done losslessly. The Install screen presents
+the plan before the browser asks where to save a new recovery ZIP. Cancellation,
+an existing nonempty destination, a failed save or a failed reopen leaves flash
+unwritten. This required scoped recovery file is distinct from the optional
+complete-radio backup and the CPS codeplug file. File access is requested within
+the Install click; no recovery file is uploaded or automatically restored later.
+
+Regression and cross-language format checks cover damaged/unsupported records,
+contact exhaustion, lossless chain capacity, interruption and repeated recovery.
+On one physical radio, the unchanged production Installer/Monitor converted one
+prepared synthetic r13 channel, recovered its original r13 state, restored all
+affected original user-data sectors and installed exact r14 with boot/codec/
+calibration retained. This is bounded migration/recovery qualification, not a
+physical power-cut test or proof that every user's r13 codeplug will fit. The
+synthetic programming never booted. Recovery identity uses non-unique
+fingerprints plus explicit same-physical-radio confirmation. Long-term endurance
+and physical microphone loudness parity are not established by these checks.

@@ -5,18 +5,18 @@
     {
       "id": "classic",
       "name": "Open25-DM32 Classic",
-      "description": "RadioFoundry UI \u00b7 DMR, FM and conventional P25",
+      "description": "RadioFoundry UI · FM, DMR, conventional P25 and NXDN",
       "enabled": true,
       "variants": [
         {
           "id": "standard",
-          "name": "Standard \u00b7 DM-32UV",
+          "name": "Standard · DM-32UV",
           "releases": [
             {
-              "version": "0.1.0-rc1-r13",
-              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip",
-              "sha256": "62298c88923ffd621aa590e409e619ca3beaf94432a468668ff9aa44553974d0",
-              "notes": "Classic r13 fixes the r12 P25 transmit-startup timer collision and completes P25 RX/TX hardware ownership release after delayed cleanup. It retains the r12 speaker FIFO fix and the existing MIT IMBE codec and gain. This public line remains FM, DMR and conventional P25. Existing RFKV programming, RX-only defaults, transmit checks and reserved codec slot are preserved. Full host and sanitizer tests, target stack/ABI checks, zero-warning builds and a byte-identical forced rebuild passed. The matching fix candidate passed installation/startup and saved-channel checks; manual on-air PTT/audio qualification remains pending. A DMR-only endurance lockout has not been reproduced. Known issue: PL/CTCSS can drop during DTMF."
+              "version": "0.1.0-rc1-r14",
+              "file": "classic/standard/Open25-DM32-Classic-0.1.0-rc1-r14-application.zip",
+              "sha256": "ee9d06fdb4699a54ac4f46d6f7ee048488b88ab32598d9e3990597fe1a749dea",
+              "notes": "Classic r14 refreshes the radio to current RadioFoundry upstream while retaining our band policy and necessary fixes. FM, DMR, conventional P25 and NXDN are supported. Extended receive is always enabled; transmit remains within 136–174 and 400–480 MHz with narrower P25 limits. Updating the exact public r13 build checks and converts supported P25 programming to native contact links without dropping settings. Conversion requires saving a verified recovery ZIP before any writes. Unsupported records, insufficient capacity and unknown source firmware are refused before flashing. Use the matched Classic CPS for r14; older r13 backups are not interchangeable with native r14 programming. Bounded four-mode hardware and migration/recovery checks passed; long-term endurance and physical microphone loudness parity are not established."
             }
           ]
         }
@@ -25,7 +25,7 @@
     {
       "id": "next",
       "name": "Open25-DM32 Next",
-      "description": "New UI \u00b7 FM and conventional / trunked P25",
+      "description": "New UI · FM and conventional / trunked P25",
       "enabled": false,
       "releaseDate": "TBD",
       "variants": []

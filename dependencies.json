@@ -6,6 +6,11 @@
     "sha256": "eae5b98615d67ba465061c84a5fb209a902333dc700671ce4ca69a05eb4aaee9"
   },
   "test_firmware": {
+    "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r14-application.zip",
+    "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r14-application.zip",
+    "sha256": "ee9d06fdb4699a54ac4f46d6f7ee048488b88ab32598d9e3990597fe1a749dea"
+  },
+  "migration_source_firmware": {
     "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip",
     "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip",
     "sha256": "62298c88923ffd621aa590e409e619ca3beaf94432a468668ff9aa44553974d0"

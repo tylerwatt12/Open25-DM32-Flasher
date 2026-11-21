@@ -11,7 +11,7 @@ import { zip } from '../lib/zip.mjs';
 import { APP_START, SECTOR, concat, crc32, equal, filled, get16, get32, sha256, sum8, u16, u32 } from '../lib/bytes.mjs';
 import { MemoryJournal, MemoryFile } from './helpers.mjs';
 import { legacyProgrammingFixture } from './programming-fixture.mjs';
-import { NATIVE_SCHEMA } from '../lib/programming.mjs';
+import { NATIVE_SCHEMA, CLASSIC_R13_SCHEMA, planProgrammingMigration } from '../lib/programming.mjs';
 import { verifyMigrationArchive } from '../lib/migration-archive.mjs';
 import { syntheticCodec } from './codec-fixture.mjs';
 
@@ -324,8 +324,11 @@ const catalog = JSON.parse(await readFile(new URL('../../releases/catalog.json',
 const publicClassic = catalog.channels.find(channel => channel.id === 'classic').variants
   .flatMap(variant => variant.releases)[0];
 assert(publicClassic, 'The current catalog Classic package is required for owner-boundary tests.');
-const publicClassicZip = new Uint8Array(await readFile(new URL(`../../releases/${publicClassic.file}`, import.meta.url)));
-assert.equal(await sha256(publicClassicZip), publicClassic.sha256, 'Current Classic ZIP must match its catalog SHA256.');
+const currentClassicZip = new Uint8Array(await readFile(new URL(`../../releases/${publicClassic.file}`, import.meta.url)));
+assert.equal(await sha256(currentClassicZip), publicClassic.sha256, 'Current Classic ZIP must match its catalog SHA256.');
+const sourcePin = JSON.parse(await readFile(new URL('../../dependencies.json', import.meta.url), 'utf8')).migration_source_firmware;
+const publicClassicZip = new Uint8Array(await readFile(new URL('../../' + sourcePin.path, import.meta.url)));
+assert.equal(await sha256(publicClassicZip), sourcePin.sha256, 'Legacy r13 source fixture must retain its exact pin.');
 
 async function ownerSetup(t) {
   const { clock, wire, monitor } = await setup(t);
@@ -346,7 +349,7 @@ function factoryFile(payload) {
   bytes.set(payload, 0x100); return bytes;
 }
 
-test('actual Installer and Monitor update the catalog-verified current Classic package with program-only CRC proof', async t => {
+test('actual Installer and Monitor retain the pinned legacy r13 program-only update path', async t => {
   const { clock, wire, monitor, journal, engine } = await ownerSetup(t);
   const boot = wire.images.program.slice(0, APP_START), codec = wire.images.program.slice(DM32_CODEC.start), data = wire.images.data.slice();
   const { application, manifest } = await readFirmware(publicClassicZip);
@@ -474,17 +477,15 @@ test('lost migration acknowledgement never retries a sector or earns restart pro
 });
 
 
-test('actual Installer and Monitor migrate a pinned r13 source using the saved recovery image and sector readback', async t => {
+test('actual Installer and Monitor migrate pinned r13 to the exact current r14 catalog package with saved recovery and sector readback', async t => {
   const { clock, wire, monitor } = await setup(t);
   const source = await readFirmware(publicClassicZip);
   wire.images.program.fill(255, APP_START, DM32_CODEC.start); wire.images.program.set(source.application, APP_START);
   wire.images.program.set(syntheticCodec(), DM32_CODEC.start); wire.images.data = legacyProgrammingFixture();
   const original = { program: wire.images.program.slice(), data: wire.images.data.slice() };
-  const application = filled(8193, 0x29);
-  const bytes = zip(new Map([['firmware.json', new TextEncoder().encode(JSON.stringify({
-    format: 'open25-dm32-firmware', version: 2, target: 'dm32-048', release: 'migration-wire-test',
-    applicationSha256: await sha256(application), codecTablesEnd: DM32_CODEC.tablesHi,
-    programming: { schema: NATIVE_SCHEMA } }))], ['application.bin', application]]));
+  const bytes = currentClassicZip;
+  const { manifest: targetManifest } = await readFirmware(bytes);
+  assert.equal(targetManifest.programming.schema, NATIVE_SCHEMA);
   const engine = new Installer({ journal: new MemoryJournal() }); await engine.attach(monitor); await engine.selectFirmware(bytes);
   const file = new MemoryFile(), result = await clock.run(engine.install({ firstInstall: false, recoveryHandle: file }));
   const recovery = await verifyMigrationArchive(file.bytes);
@@ -496,4 +497,21 @@ test('actual Installer and Monitor migrate a pinned r13 source using the saved r
   assert(equal(wire.images.program.subarray(0, APP_START), original.program.subarray(0, APP_START)));
   assert(equal(wire.images.data.subarray(0x710000, 0x711000), original.data.subarray(0x710000, 0x711000)));
   assert.equal((await engine.completeWrite(result)).state, 'complete');
+});
+test('reinstalling the exact current r14 target preserves migrated native programming without another recovery file', async t => {
+  const { clock, wire, monitor } = await setup(t);
+  const source = await readFirmware(publicClassicZip), target = await readFirmware(currentClassicZip);
+  wire.images.program.fill(255, APP_START, DM32_CODEC.start); wire.images.program.set(target.application, APP_START);
+  wire.images.program.set(syntheticCodec(), DM32_CODEC.start);
+  const data = legacyProgrammingFixture();
+  const conversion = planProgrammingMigration({ data, sourceSchema: CLASSIC_R13_SCHEMA, targetSchema: NATIVE_SCHEMA,
+    sourceIdentity: { schema: CLASSIC_R13_SCHEMA, applicationBytes: source.application.length, applicationSha256: source.manifest.applicationSha256 } });
+  for (const change of conversion.changes) data.set(change.after, change.address);
+  wire.images.data = data;
+  const before = data.slice(), engine = new Installer({ journal: new MemoryJournal() }); await engine.attach(monitor);
+  await engine.selectFirmware(currentClassicZip); assert.equal(engine.state.programming.sourceSchema, NATIVE_SCHEMA); assert.equal(engine.state.programming.changed, false);
+  const receipt = await clock.run(engine.install({ firstInstall: false }));
+  assert.equal(receipt.verificationMethod, 'sector-crc32'); assert(!receipt.recovery);
+  assert(writeFrames(wire).every(frame => frame[6] === 4)); assert(equal(wire.images.data, before));
+  assert.equal((await engine.completeWrite(receipt)).state, 'complete');
 });

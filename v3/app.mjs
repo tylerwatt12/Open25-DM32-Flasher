@@ -27,7 +27,7 @@ const randomId = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 const pageId = randomId();
-const APP_VERSION = '2026-11-20-flasher-v3-schema-migration-1';
+const APP_VERSION = '2026-11-20-flasher-v3-r14-1';
 // Bump this key if the regulatory notice changes and needs fresh acceptance.
 const usageAcceptanceKey = 'open25-dm32-v3-regulatory-v1';
 let diagnosticHardware, diagnosticAttempt;
