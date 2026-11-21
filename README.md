@@ -212,7 +212,9 @@ as the pinned migration source for r14.
 
 The r14 application is built from the reviewed Classic source based on current
 RadioFoundry upstream. It supports FM, DMR, conventional P25 and NXDN, retains the
-reserved codec layout, and applies our band policy: extended reception is always
+reserved codec layout, and identifies Classic with its own Open25 boot emblem
+and persistent home banner. The picker preview comes from the native Classic
+home renderer. It applies our band policy: extended reception is always
 enabled; FM/DMR/NXDN transmit within 136–174 and 400–480 MHz; P25 transmission uses
 the narrower documented service/amateur ranges. Use the matched Classic CPS for
 r14. A native r14 CPS backup and an older r13 explicit-talkgroup backup are not

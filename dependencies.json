@@ -8,7 +8,7 @@
   "test_firmware": {
     "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r14-application.zip",
     "path": "releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r14-application.zip",
-    "sha256": "ee9d06fdb4699a54ac4f46d6f7ee048488b88ab32598d9e3990597fe1a749dea"
+    "sha256": "3e2bdce9486beab83ab3d35ccedfb3ca577439143a0584fb6dfe5d923f56c2f6"
   },
   "migration_source_firmware": {
     "source": "https://kd8zmm.com/open25-dm32/releases/classic/standard/Open25-DM32-Classic-0.1.0-rc1-r13-p25-tx-cleanup-application.zip",
